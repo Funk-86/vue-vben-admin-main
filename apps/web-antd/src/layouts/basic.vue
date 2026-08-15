@@ -1,0 +1,393 @@
+<script lang="ts" setup>
+import type { NotificationItem } from '@vben/layouts';
+
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
+
+import { AuthenticationLoginExpiredModal } from '@vben/common-ui';
+import { useWatermark } from '@vben/hooks';
+import {
+  BasicLayout,
+  Notification,
+  UserDropdown,
+} from '@vben/layouts';
+import { preferences, usePreferences } from '@vben/preferences';
+import { useAccessStore, useUserStore } from '@vben/stores';
+
+import {
+  buildNotificationStreamUrl,
+  getNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  type NotificationVO,
+} from '#/api/hr/notification';
+import AiAssistant from '#/components/ai-assistant/index.vue';
+import AppLockScreen from '#/layouts/lock-screen.vue';
+import { $t } from '#/locales';
+import { useAuthStore } from '#/store';
+import { ROLE_NAME_MAP } from '#/views/hr/roles';
+import LoginForm from '#/views/_core/authentication/login.vue';
+
+const POLL_INTERVAL_MS = 30_000;
+const SSE_RECONNECT_BASE_MS = 2_000;
+const SSE_RECONNECT_MAX_MS = 30_000;
+
+const notifications = ref<NotificationItem[]>([]);
+const pollTimer = ref<null | ReturnType<typeof setInterval>>(null);
+const eventSource = ref<EventSource | null>(null);
+const sseReconnectTimer = ref<null | ReturnType<typeof setTimeout>>(null);
+const sseRetryMs = ref(SSE_RECONNECT_BASE_MS);
+
+const router = useRouter();
+const userStore = useUserStore();
+const authStore = useAuthStore();
+const accessStore = useAccessStore();
+const { destroyWatermark, updateWatermark } = useWatermark();
+const { isDark } = usePreferences();
+
+const showDot = computed(() =>
+  notifications.value.some((item) => !item.isRead),
+);
+
+const menus = computed(() => [
+  {
+    handler: () => {
+      router.push({ name: 'Profile' });
+    },
+    icon: 'lucide:user',
+    text: $t('page.auth.profile'),
+  },
+]);
+
+const avatar = computed(() => {
+  return userStore.userInfo?.avatar ?? preferences.app.defaultAvatar;
+});
+
+const dropdownDescription = computed(() => {
+  return userStore.userInfo?.username || '';
+});
+
+const dropdownTagText = computed(() => {
+  const role = userStore.userInfo?.roles?.[0];
+  return role ? ROLE_NAME_MAP[role] || role : '';
+});
+
+function formatNoticeDate(value?: string) {
+  if (!value) {
+    return '';
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  const diffMs = Date.now() - date.getTime();
+  const minute = 60_000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (diffMs < minute) {
+    return '刚刚';
+  }
+  if (diffMs < hour) {
+    return `${Math.floor(diffMs / minute)}分钟前`;
+  }
+  if (diffMs < day) {
+    return `${Math.floor(diffMs / hour)}小时前`;
+  }
+  if (diffMs < 2 * day) {
+    return '1天前';
+  }
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  return `${y}-${m}-${d} ${hh}:${mm}`;
+}
+
+function toNotificationItem(item: NotificationVO): NotificationItem {
+  return {
+    avatar: preferences.app.defaultAvatar,
+    date: formatNoticeDate(item.createdAt),
+    id: item.id,
+    isRead: item.isRead === 1,
+    link: item.link || '/hr/task',
+    message: item.content || '',
+    title: item.title,
+  };
+}
+
+async function loadNotifications() {
+  if (!accessStore.accessToken) {
+    notifications.value = [];
+    return;
+  }
+  try {
+    const page = await getNotifications({ pageNum: 1, pageSize: 20 });
+    notifications.value = (page?.records ?? []).map((item) =>
+      toNotificationItem(item),
+    );
+  } catch {
+    // 轮询失败不打断页面
+  }
+}
+
+function stopPolling() {
+  if (pollTimer.value) {
+    clearInterval(pollTimer.value);
+    pollTimer.value = null;
+  }
+}
+
+function startPolling() {
+  stopPolling();
+  if (!accessStore.accessToken) {
+    return;
+  }
+  pollTimer.value = setInterval(() => {
+    if (document.visibilityState === 'visible') {
+      void loadNotifications();
+    }
+  }, POLL_INTERVAL_MS);
+}
+
+function clearSseReconnect() {
+  if (sseReconnectTimer.value) {
+    clearTimeout(sseReconnectTimer.value);
+    sseReconnectTimer.value = null;
+  }
+}
+
+function stopSse() {
+  clearSseReconnect();
+  if (eventSource.value) {
+    eventSource.value.close();
+    eventSource.value = null;
+  }
+}
+
+function scheduleSseReconnect() {
+  clearSseReconnect();
+  if (!accessStore.accessToken) {
+    return;
+  }
+  const delay = sseRetryMs.value;
+  sseRetryMs.value = Math.min(sseRetryMs.value * 2, SSE_RECONNECT_MAX_MS);
+  sseReconnectTimer.value = setTimeout(() => {
+    startSse();
+  }, delay);
+}
+
+function startSse() {
+  stopSse();
+  const token = accessStore.accessToken;
+  if (!token) {
+    return;
+  }
+  const es = new EventSource(buildNotificationStreamUrl(token));
+  eventSource.value = es;
+
+  es.addEventListener('connected', () => {
+    sseRetryMs.value = SSE_RECONNECT_BASE_MS;
+  });
+
+  es.addEventListener('unread', () => {
+    void loadNotifications();
+  });
+
+  es.onerror = () => {
+    es.close();
+    if (eventSource.value === es) {
+      eventSource.value = null;
+    }
+    scheduleSseReconnect();
+  };
+}
+
+function onVisibilityChange() {
+  if (document.visibilityState === 'visible' && accessStore.accessToken) {
+    void loadNotifications();
+    if (!eventSource.value || eventSource.value.readyState === EventSource.CLOSED) {
+      startSse();
+    }
+  }
+}
+
+async function handleLogout() {
+  stopPolling();
+  stopSse();
+  notifications.value = [];
+  await authStore.logout(false);
+}
+
+async function handleNoticeClear() {
+  try {
+    await markAllNotificationsRead();
+    notifications.value = [];
+  } catch {
+    // handled
+  }
+}
+
+async function markRead(id: number | string) {
+  const item = notifications.value.find((n) => n.id === id);
+  if (!item || item.isRead) {
+    return;
+  }
+  item.isRead = true;
+  try {
+    await markNotificationRead(Number(id));
+  } catch {
+    item.isRead = false;
+  }
+}
+
+function remove(id: number | string) {
+  notifications.value = notifications.value.filter((item) => item.id !== id);
+}
+
+async function handleMakeAll() {
+  try {
+    await markAllNotificationsRead();
+    notifications.value.forEach((item) => {
+      item.isRead = true;
+    });
+  } catch {
+    // handled
+  }
+}
+
+const viewAll = () => {
+  void router.push('/hr/task');
+};
+
+const handleClick = (item: NotificationItem) => {
+  if (item.id != null) {
+    void markRead(item.id);
+  }
+  if (item.link) {
+    navigateTo(item.link, item.query, item.state);
+  }
+};
+
+function navigateTo(
+  link: string,
+  query?: Record<string, any>,
+  state?: Record<string, any>,
+) {
+  if (link.startsWith('http://') || link.startsWith('https://')) {
+    window.open(link, '_blank');
+  } else {
+    router.push({
+      path: link,
+      query: query || {},
+      state,
+    });
+  }
+}
+
+watch(
+  () => accessStore.accessToken,
+  (token) => {
+    if (token) {
+      void loadNotifications();
+      startPolling();
+      sseRetryMs.value = SSE_RECONNECT_BASE_MS;
+      startSse();
+    } else {
+      stopPolling();
+      stopSse();
+      notifications.value = [];
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  () => ({
+    enable: preferences.app.watermark,
+    content: preferences.app.watermarkContent,
+    isDark: isDark.value,
+  }),
+  async ({ enable, content, isDark: isDarkValue }) => {
+    if (enable) {
+      const watermarkColor = isDarkValue
+        ? 'rgba(255, 255, 255, 0.12)'
+        : 'rgba(0, 0, 0, 0.12)';
+
+      await updateWatermark({
+        advancedStyle: {
+          colorStops: [
+            {
+              color: watermarkColor,
+              offset: 0,
+            },
+            {
+              color: watermarkColor,
+              offset: 1,
+            },
+          ],
+          type: 'linear',
+        },
+        content:
+          content ||
+          `${userStore.userInfo?.username} - ${userStore.userInfo?.realName}`,
+      });
+    } else {
+      destroyWatermark();
+    }
+  },
+  {
+    immediate: true,
+  },
+);
+
+onMounted(() => {
+  document.addEventListener('visibilitychange', onVisibilityChange);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', onVisibilityChange);
+  stopPolling();
+  stopSse();
+});
+</script>
+
+<template>
+  <BasicLayout @clear-preferences-and-logout="handleLogout">
+    <template #user-dropdown>
+      <UserDropdown
+        :avatar
+        :menus
+        :text="userStore.userInfo?.realName"
+        :description="dropdownDescription"
+        :tag-text="dropdownTagText"
+        @logout="handleLogout"
+        @clear-preferences-and-logout="handleLogout"
+      />
+    </template>
+    <template #notification>
+      <Notification
+        :dot="showDot"
+        :notifications="notifications"
+        @clear="handleNoticeClear"
+        @read="(item) => item.id && markRead(item.id)"
+        @remove="(item) => item.id && remove(item.id)"
+        @make-all="handleMakeAll"
+        @on-click="handleClick"
+        @view-all="viewAll"
+      />
+    </template>
+    <template #extra>
+      <AuthenticationLoginExpiredModal
+        v-model:open="accessStore.loginExpired"
+        :avatar
+      >
+        <LoginForm />
+      </AuthenticationLoginExpiredModal>
+    </template>
+    <template #lock-screen>
+      <AppLockScreen :avatar @to-login="handleLogout" />
+    </template>
+  </BasicLayout>
+  <AiAssistant v-if="accessStore.accessToken" />
+</template>

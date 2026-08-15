@@ -1,0 +1,10 @@
+/* HR 筛选下拉：展开层挂到 body，选项需完整显示部门/岗位名称 */
+.hr-filter-select-dropdown {
+  min-width: 220px !important;
+}
+
+.hr-filter-select-dropdown .ant-select-item-option-content {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
