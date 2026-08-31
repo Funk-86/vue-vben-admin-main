@@ -5,7 +5,7 @@ import type { FacePunchMode } from '#/components/face-punch-modal/index.vue';
 import { computed, onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
-import { useUserStore } from '@vben/stores';
+import { useAccessStore, useUserStore } from '@vben/stores';
 import { downloadFileFromBlob } from '@vben/utils';
 
 import {
@@ -19,31 +19,31 @@ import {
   Select,
   Space,
   Table,
+  Tabs,
   Tag,
   TimePicker,
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
-import FacePunchModal from '#/components/face-punch-modal/index.vue';
 import {
   checkIn,
   checkOut,
   createAttendance,
   deleteAttendance,
   exportAttendanceExcel,
-  getAttendanceList,
   fetchAllEmployees,
+  getAttendanceList,
   updateAttendance,
 } from '#/api/hr';
+import FacePunchModal from '#/components/face-punch-modal/index.vue';
 import { resolveMyEmployeeId } from '#/utils/hr/resolve-employee-id';
+import AdvancePanels from '#/views/hr/attendance/advance-panels.vue';
 import { ATTENDANCE_STATUS_MAP } from '#/views/hr/constants';
-import {
-  hasAnyRole,
-  HR_ROLE,
-  ROLE_HR_STAFF,
-} from '#/views/hr/roles';
+import { hasAccessCode, hasAnyRole, HR_ROLE } from '#/views/hr/roles';
 
 const userStore = useUserStore();
+const accessStore = useAccessStore();
+const mainTab = ref('records');
 
 /** 仅超管可选员工代打卡 */
 const isSuperAdmin = computed(() =>
@@ -52,7 +52,7 @@ const isSuperAdmin = computed(() =>
 
 /** HR / 超管可手动补录、编辑、删除 */
 const isHrStaff = computed(() =>
-  hasAnyRole(userStore.userInfo?.roles, ROLE_HR_STAFF),
+  hasAccessCode(accessStore.accessCodes, 'feat.org.manage'),
 );
 
 const loading = ref(false);
@@ -241,55 +241,68 @@ onMounted(async () => {
 </script>
 
 <template>
-  <Page description="考勤打卡与记录管理" title="考勤管理">
-    <div class="mb-4 flex flex-wrap items-center gap-3">
-      <Select
-        v-if="isSuperAdmin"
-        v-model:value="checkEmployeeId"
-        :options="employeeOptions"
-        class="w-64"
-        placeholder="选择员工打卡"
-      />
-      <Button type="primary" @click="handleCheckIn">上班打卡</Button>
-      <Button @click="handleCheckOut">下班打卡</Button>
-      <Button type="primary" ghost @click="openFacePunch('check-in')">
-        人脸上班打卡
-      </Button>
-      <Button ghost @click="openFacePunch('check-out')">人脸下班打卡</Button>
-      <Button :loading="exportLoading" @click="handleExport">导出 Excel</Button>
-      <Button v-if="isHrStaff" class="ml-auto" @click="openCreate">
-        手动补录
-      </Button>
-    </div>
+  <Page description="考勤打卡、台账与加班/申诉/外勤" title="考勤管理">
+    <Tabs v-model:active-key="mainTab">
+      <Tabs.TabPane key="records" tab="打卡台账">
+        <div class="mb-4 flex flex-wrap items-center gap-3">
+          <Select
+            v-if="isSuperAdmin"
+            v-model:value="checkEmployeeId"
+            :options="employeeOptions"
+            class="w-64"
+            placeholder="选择员工打卡"
+          />
+          <Button type="primary" @click="handleCheckIn">上班打卡</Button>
+          <Button @click="handleCheckOut">下班打卡</Button>
+          <Button type="primary" ghost @click="openFacePunch('check-in')">
+            人脸上班打卡
+          </Button>
+          <Button ghost @click="openFacePunch('check-out')">
+            人脸下班打卡
+          </Button>
+          <Button :loading="exportLoading" @click="handleExport">
+            导出 Excel
+          </Button>
+          <Button v-if="isHrStaff" class="ml-auto" @click="openCreate">
+            手动补录
+          </Button>
+        </div>
 
-    <Table
-      :columns="columns"
-      :data-source="list"
-      :loading="loading"
-      :pagination="pagination"
-      :scroll="{ x: 900 }"
-      row-key="id"
-      @change="handleTableChange"
-    >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'status'">
-          <Tag>{{ ATTENDANCE_STATUS_MAP[record.status] ?? record.status }}</Tag>
-        </template>
-        <template v-else-if="column.key === 'action'">
-          <Space v-if="isHrStaff">
-            <Button size="small" type="link" @click="openEdit(record)">
-              编辑
-            </Button>
-            <Popconfirm
-              title="确定删除该记录？"
-              @confirm="handleDelete(record)"
-            >
-              <Button danger size="small" type="link">删除</Button>
-            </Popconfirm>
-          </Space>
-        </template>
-      </template>
-    </Table>
+        <Table
+          :columns="columns"
+          :data-source="list"
+          :loading="loading"
+          :pagination="pagination"
+          :scroll="{ x: 900 }"
+          row-key="id"
+          @change="handleTableChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'status'">
+              <Tag>
+                {{ ATTENDANCE_STATUS_MAP[record.status] ?? record.status }}
+              </Tag>
+            </template>
+            <template v-else-if="column.key === 'action'">
+              <Space v-if="isHrStaff">
+                <Button size="small" type="link" @click="openEdit(record)">
+                  编辑
+                </Button>
+                <Popconfirm
+                  title="确定删除该记录？"
+                  @confirm="handleDelete(record)"
+                >
+                  <Button danger size="small" type="link">删除</Button>
+                </Popconfirm>
+              </Space>
+            </template>
+          </template>
+        </Table>
+      </Tabs.TabPane>
+      <Tabs.TabPane key="advance" tab="加班/申诉/外勤">
+        <AdvancePanels />
+      </Tabs.TabPane>
+    </Tabs>
 
     <Modal
       v-model:open="modalOpen"

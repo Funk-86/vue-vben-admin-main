@@ -117,6 +117,20 @@ export interface LeaveRequestVO {
   status: number;
 }
 
+export interface LeaveBalanceVO {
+  employeeId: number;
+  employeeName?: string;
+  id: number;
+  leaveTypeCode?: string;
+  leaveTypeId: number;
+  leaveTypeName?: string;
+  pendingDays: number;
+  quotaDays: number;
+  remainingDays: number;
+  usedDays: number;
+  year: number;
+}
+
 export interface SalaryVO {
   actualSalary: number;
   baseSalary: number;

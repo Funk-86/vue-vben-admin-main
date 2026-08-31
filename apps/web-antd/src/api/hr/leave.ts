@@ -1,4 +1,10 @@
-import type { LeaveRequestVO, LeaveTypeVO, PageQuery, PageResult } from './types';
+import type {
+  LeaveBalanceVO,
+  LeaveRequestVO,
+  LeaveTypeVO,
+  PageQuery,
+  PageResult,
+} from './types';
 
 import { requestClient } from '#/api/request';
 
@@ -32,7 +38,9 @@ export async function deleteLeaveType(id: number) {
 }
 
 export async function getLeaveRequests(params?: PageQuery) {
-  return requestClient.get<PageResult<LeaveRequestVO>>('/leave/requests', { params });
+  return requestClient.get<PageResult<LeaveRequestVO>>('/leave/requests', {
+    params,
+  });
 }
 
 export async function getLeaveRequestById(id: number) {
@@ -65,4 +73,24 @@ export async function cancelLeaveRequest(id: number, approveRemark?: string) {
   return requestClient.put(`/leave/requests/${id}/cancel`, {
     approveRemark,
   });
+}
+
+export async function getMyLeaveBalances(year?: number) {
+  return requestClient.get<LeaveBalanceVO[]>('/leave/balances/mine', {
+    params: year !== undefined && year !== null ? { year } : undefined,
+  });
+}
+
+export async function getLeaveBalances(params?: {
+  employeeId?: number;
+  year?: number;
+}) {
+  return requestClient.get<LeaveBalanceVO[]>('/leave/balances', { params });
+}
+
+export async function initLeaveBalances(data: {
+  overwriteQuota: boolean;
+  year?: number;
+}) {
+  return requestClient.post('/leave/balances/init', data);
 }

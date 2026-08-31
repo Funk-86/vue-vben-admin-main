@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { EmployeeVO, SalaryVO } from '#/api/hr';
+import type { AttendanceDeductRuleVO } from '#/api/hr/salary';
 
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 
@@ -17,7 +18,9 @@ import {
   Popconfirm,
   Select,
   Space,
+  Switch,
   Table,
+  Tabs,
   Tag,
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
@@ -26,9 +29,11 @@ import {
   createSalary,
   deleteSalary,
   fetchAllEmployees,
+  getDeductRules,
   getSalaryList,
   paySalary,
   previewSalary,
+  updateDeductRule,
   updateSalary,
 } from '#/api/hr';
 import { SALARY_STATUS_MAP } from '#/views/hr/constants';
@@ -37,10 +42,14 @@ const loading = ref(false);
 const list = ref<SalaryVO[]>([]);
 const employees = ref<EmployeeVO[]>([]);
 const modalOpen = ref(false);
-const editing = ref<SalaryVO | null>(null);
+const editing = ref<null | SalaryVO>(null);
 const previewTip = ref('');
+const deductDetail = ref('');
 const previewLoading = ref(false);
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+const activeTab = ref('list');
+const deductRules = ref<AttendanceDeductRuleVO[]>([]);
+const loadingRules = ref(false);
 
 const formState = reactive({
   baseSalary: 0,
@@ -110,6 +119,7 @@ function handleTableChange(pag: { current: number; pageSize: number }) {
 function openCreate() {
   editing.value = null;
   previewTip.value = '';
+  deductDetail.value = '';
   Object.assign(formState, {
     baseSalary: 0,
     bonus: 0,
@@ -126,6 +136,7 @@ function openCreate() {
 function openEdit(record: SalaryVO) {
   editing.value = record;
   previewTip.value = '';
+  deductDetail.value = '';
   Object.assign(formState, {
     baseSalary: record.baseSalary,
     bonus: record.bonus ?? 0,
@@ -155,6 +166,7 @@ async function applyPreview() {
     formState.deduction = Number(preview.deduction ?? 0);
     formState.positionId = preview.positionId;
     previewTip.value = preview.tip || '';
+    deductDetail.value = preview.deductDetail || '';
     if (preview.tip) {
       message.warning(preview.tip);
     }
@@ -216,60 +228,129 @@ async function handleDelete(record: SalaryVO) {
   await loadData();
 }
 
+const ruleColumns = [
+  { dataIndex: 'ruleCode', key: 'ruleCode', title: '规则编码', width: 140 },
+  { dataIndex: 'remark', key: 'remark', title: '说明' },
+  { dataIndex: 'unitAmount', key: 'unitAmount', title: '单价', width: 120 },
+  { dataIndex: 'enabled', key: 'enabled', title: '启用', width: 100 },
+  { key: 'action', title: '操作', width: 100 },
+];
+
+async function loadDeductRules() {
+  loadingRules.value = true;
+  try {
+    deductRules.value = await getDeductRules();
+  } finally {
+    loadingRules.value = false;
+  }
+}
+
+async function saveRule(record: AttendanceDeductRuleVO) {
+  await updateDeductRule(record.id, {
+    enabled: record.enabled,
+    remark: record.remark,
+    ruleCode: record.ruleCode,
+    unitAmount: record.unitAmount,
+  });
+  message.success('规则已保存');
+  await loadDeductRules();
+}
+
 onMounted(async () => {
-  await Promise.all([loadEmployees(), loadData()]);
+  await Promise.all([loadEmployees(), loadData(), loadDeductRules()]);
 });
 </script>
 
 <template>
-  <Page description="员工月薪生成与发放（底薪与任务奖金由系统字典带出）" title="薪资管理">
-    <div class="mb-4">
-      <Button type="primary" @click="openCreate">生成/新增薪资</Button>
-    </div>
+  <Page
+    description="员工月薪生成与发放（底薪、任务奖金与考勤扣款由系统带出）"
+    title="薪资管理"
+  >
+    <Tabs v-model:active-key="activeTab">
+      <Tabs.TabPane key="list" tab="薪资列表">
+        <div class="mb-4">
+          <Button type="primary" @click="openCreate">生成/新增薪资</Button>
+        </div>
 
-    <Table
-      :columns="columns"
-      :data-source="list"
-      :loading="loading"
-      :pagination="pagination"
-      :scroll="{ x: 1400 }"
-      row-key="id"
-      @change="handleTableChange"
-    >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'status'">
-          <Tag :color="record.status === 1 ? 'green' : 'orange'">
-            {{ SALARY_STATUS_MAP[record.status] }}
-          </Tag>
-        </template>
-        <template v-else-if="column.key === 'action'">
-          <Space>
-            <Button
-              v-if="record.status === 0"
-              size="small"
-              type="link"
-              @click="openEdit(record)"
-            >
-              编辑
-            </Button>
-            <Popconfirm
-              v-if="record.status === 0"
-              title="确认发放该薪资？"
-              @confirm="handlePay(record)"
-            >
-              <Button size="small" type="link">发放</Button>
-            </Popconfirm>
-            <Popconfirm
-              v-if="record.status === 0"
-              title="确定删除？"
-              @confirm="handleDelete(record)"
-            >
-              <Button danger size="small" type="link">删除</Button>
-            </Popconfirm>
-          </Space>
-        </template>
-      </template>
-    </Table>
+        <Table
+          :columns="columns"
+          :data-source="list"
+          :loading="loading"
+          :pagination="pagination"
+          :scroll="{ x: 1400 }"
+          row-key="id"
+          @change="handleTableChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'status'">
+              <Tag :color="record.status === 1 ? 'green' : 'orange'">
+                {{ SALARY_STATUS_MAP[record.status] }}
+              </Tag>
+            </template>
+            <template v-else-if="column.key === 'action'">
+              <Space>
+                <Button
+                  v-if="record.status === 0"
+                  size="small"
+                  type="link"
+                  @click="openEdit(record)"
+                >
+                  编辑
+                </Button>
+                <Popconfirm
+                  v-if="record.status === 0"
+                  title="确认发放该薪资？"
+                  @confirm="handlePay(record)"
+                >
+                  <Button size="small" type="link">发放</Button>
+                </Popconfirm>
+                <Popconfirm
+                  v-if="record.status === 0"
+                  title="确定删除？"
+                  @confirm="handleDelete(record)"
+                >
+                  <Button danger size="small" type="link">删除</Button>
+                </Popconfirm>
+              </Space>
+            </template>
+          </template>
+        </Table>
+      </Tabs.TabPane>
+
+      <Tabs.TabPane key="rules" tab="扣款规则">
+        <Table
+          :columns="ruleColumns"
+          :data-source="deductRules"
+          :loading="loadingRules"
+          :pagination="false"
+          row-key="id"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'unitAmount'">
+              <InputNumber
+                v-model:value="record.unitAmount"
+                :min="0"
+                :precision="2"
+                class="w-full"
+              />
+            </template>
+            <template v-else-if="column.key === 'enabled'">
+              <Switch
+                :checked="record.enabled === 1"
+                @change="
+                  (checked: boolean) => (record.enabled = checked ? 1 : 0)
+                "
+              />
+            </template>
+            <template v-else-if="column.key === 'action'">
+              <Button size="small" type="link" @click="saveRule(record)">
+                保存
+              </Button>
+            </template>
+          </template>
+        </Table>
+      </Tabs.TabPane>
+    </Tabs>
 
     <Modal
       v-model:open="modalOpen"
@@ -284,6 +365,13 @@ onMounted(async () => {
         class="mb-3"
         show-icon
         type="warning"
+      />
+      <Alert
+        v-if="deductDetail && !editing"
+        :message="`自动扣款：${deductDetail}`"
+        class="mb-3"
+        show-icon
+        type="info"
       />
       <Form layout="vertical">
         <Form.Item label="员工" required>
@@ -329,7 +417,7 @@ onMounted(async () => {
             class="w-full"
           />
         </Form.Item>
-        <Form.Item label="扣款">
+        <Form.Item label="扣款（可手调）">
           <InputNumber
             v-model:value="formState.deduction"
             :min="0"

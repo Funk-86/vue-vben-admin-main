@@ -39,6 +39,7 @@ export const ATTENDANCE_STATUS_MAP: Record<number, string> = {
   3: '早退',
   4: '缺勤',
   5: '请假',
+  6: '外勤',
 };
 
 /** 请假申请状态 */

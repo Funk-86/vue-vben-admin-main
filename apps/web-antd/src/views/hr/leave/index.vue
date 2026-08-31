@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import type { LeaveRequestVO, LeaveTypeVO } from '#/api/hr';
+import type { LeaveBalanceVO, LeaveRequestVO, LeaveTypeVO } from '#/api/hr';
 
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
-import { useUserStore } from '@vben/stores';
+import { useAccessStore, useUserStore } from '@vben/stores';
 
 import {
   Button,
@@ -29,29 +29,48 @@ import {
   createLeaveRequest,
   createLeaveType,
   deleteLeaveType,
+  getLeaveBalances,
   getLeaveRequests,
   getLeaveTypes,
+  getMyLeaveBalances,
+  initLeaveBalances,
   rejectLeaveRequest,
   updateLeaveType,
 } from '#/api/hr';
 import { COMMON_STATUS, LEAVE_REQUEST_STATUS_MAP } from '#/views/hr/constants';
-import { hasAnyRole, ROLE_HR_STAFF, ROLE_MANAGER_UP } from '#/views/hr/roles';
+import { hasAccessCode } from '#/views/hr/roles';
 
 const userStore = useUserStore();
+const accessStore = useAccessStore();
 
 const canApprove = computed(() =>
-  hasAnyRole(userStore.userInfo?.roles, ROLE_MANAGER_UP),
+  hasAccessCode(accessStore.accessCodes, 'feat.leave.approve'),
 );
 
 const canManageTypes = computed(() =>
-  hasAnyRole(userStore.userInfo?.roles, ROLE_HR_STAFF),
+  hasAccessCode(accessStore.accessCodes, 'feat.org.manage'),
+);
+
+const canViewTeamBalances = computed(() =>
+  hasAccessCode(accessStore.accessCodes, [
+    'feat.leave.approve',
+    'feat.leave.balance.manage',
+  ]),
+);
+
+const canInitBalances = computed(() =>
+  hasAccessCode(accessStore.accessCodes, 'feat.leave.balance.manage'),
 );
 
 const activeTab = ref('requests');
 const loadingRequests = ref(false);
 const loadingTypes = ref(false);
+const loadingBalances = ref(false);
 const requests = ref<LeaveRequestVO[]>([]);
 const types = ref<LeaveTypeVO[]>([]);
+const myBalances = ref<LeaveBalanceVO[]>([]);
+const teamBalances = ref<LeaveBalanceVO[]>([]);
+const balanceYear = ref(dayjs().year());
 const requestPagination = reactive({ current: 1, pageSize: 10, total: 0 });
 
 const typeModalOpen = ref(false);
@@ -75,8 +94,27 @@ const requestForm = reactive({
 
 const typeOptions = ref<{ label: string; value: number }[]>([]);
 
+const selectedBalanceHint = computed(() => {
+  if (!requestForm.leaveTypeId) return '';
+  const bal = myBalances.value.find(
+    (b) => b.leaveTypeId === requestForm.leaveTypeId,
+  );
+  if (!bal) {
+    const type = types.value.find((t) => t.id === requestForm.leaveTypeId);
+    if (type && (type.maxDays === null || type.maxDays === undefined))
+      return '该类型不限额';
+    return '暂无余额记录（提交时将按年度额度初始化）';
+  }
+  return `剩余 ${bal.remainingDays} 天（额度 ${bal.quotaDays}，已用 ${bal.usedDays}，占用中 ${bal.pendingDays}）`;
+});
+
 const requestColumns = [
-  { dataIndex: 'employeeName', key: 'employeeName', title: '申请人', width: 100 },
+  {
+    dataIndex: 'employeeName',
+    key: 'employeeName',
+    title: '申请人',
+    width: 100,
+  },
   { dataIndex: 'leaveType', key: 'leaveType', title: '假期类型', width: 100 },
   { dataIndex: 'startTime', key: 'startTime', title: '开始时间', width: 170 },
   { dataIndex: 'endTime', key: 'endTime', title: '结束时间', width: 170 },
@@ -93,6 +131,28 @@ const typeColumns = [
   { dataIndex: 'status', key: 'status', title: '状态', width: 90 },
   { key: 'action', title: '操作', width: 160 },
 ];
+
+const balanceColumns = [
+  { dataIndex: 'employeeName', key: 'employeeName', title: '员工', width: 100 },
+  {
+    dataIndex: 'leaveTypeName',
+    key: 'leaveTypeName',
+    title: '假期类型',
+    width: 100,
+  },
+  { dataIndex: 'year', key: 'year', title: '年度', width: 80 },
+  { dataIndex: 'quotaDays', key: 'quotaDays', title: '额度', width: 80 },
+  { dataIndex: 'usedDays', key: 'usedDays', title: '已用', width: 80 },
+  { dataIndex: 'pendingDays', key: 'pendingDays', title: '占用中', width: 80 },
+  {
+    dataIndex: 'remainingDays',
+    key: 'remainingDays',
+    title: '剩余',
+    width: 80,
+  },
+];
+
+const myBalanceColumns = balanceColumns.filter((c) => c.key !== 'employeeName');
 
 async function loadTypes() {
   loadingTypes.value = true;
@@ -122,6 +182,27 @@ async function loadRequests() {
   } finally {
     loadingRequests.value = false;
   }
+}
+
+async function loadBalances() {
+  loadingBalances.value = true;
+  try {
+    myBalances.value = await getMyLeaveBalances(balanceYear.value);
+    if (canViewTeamBalances.value) {
+      teamBalances.value = await getLeaveBalances({ year: balanceYear.value });
+    }
+  } finally {
+    loadingBalances.value = false;
+  }
+}
+
+async function handleInitBalances() {
+  await initLeaveBalances({
+    overwriteQuota: false,
+    year: balanceYear.value,
+  });
+  message.success('已初始化当年余额');
+  await loadBalances();
 }
 
 function openTypeCreate() {
@@ -182,6 +263,7 @@ function openRequestCreate() {
     reason: '',
     startTime: undefined,
   });
+  void loadBalances();
   requestModalOpen.value = true;
 }
 
@@ -204,34 +286,38 @@ async function submitRequest() {
   });
   message.success('提交成功');
   requestModalOpen.value = false;
-  await loadRequests();
+  await Promise.all([loadRequests(), loadBalances()]);
 }
 
 async function handleApprove(record: LeaveRequestVO) {
   await approveLeaveRequest(record.id);
   message.success('已通过');
-  await loadRequests();
+  await Promise.all([loadRequests(), loadBalances()]);
 }
 
 async function handleReject(record: LeaveRequestVO) {
   await rejectLeaveRequest(record.id);
   message.success('已拒绝');
-  await loadRequests();
+  await Promise.all([loadRequests(), loadBalances()]);
 }
 
 async function handleCancel(record: LeaveRequestVO) {
   await cancelLeaveRequest(record.id);
   message.success('已撤销');
-  await loadRequests();
+  await Promise.all([loadRequests(), loadBalances()]);
 }
 
+watch(balanceYear, () => {
+  void loadBalances();
+});
+
 onMounted(async () => {
-  await Promise.all([loadTypes(), loadRequests()]);
+  await Promise.all([loadTypes(), loadRequests(), loadBalances()]);
 });
 </script>
 
 <template>
-  <Page description="假期类型与请假申请审批" title="请假管理">
+  <Page description="假期类型、余额台账与请假申请审批" title="请假管理">
     <Tabs v-model:active-key="activeTab">
       <Tabs.TabPane key="requests" tab="请假申请">
         <div class="mb-4">
@@ -244,7 +330,13 @@ onMounted(async () => {
           :pagination="requestPagination"
           :scroll="{ x: 1100 }"
           row-key="id"
-          @change="(pag) => { requestPagination.current = pag.current; requestPagination.pageSize = pag.pageSize; loadRequests(); }"
+          @change="
+            (pag) => {
+              requestPagination.current = pag.current;
+              requestPagination.pageSize = pag.pageSize;
+              loadRequests();
+            }
+          "
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'status'">
@@ -277,6 +369,35 @@ onMounted(async () => {
             </template>
           </template>
         </Table>
+      </Tabs.TabPane>
+
+      <Tabs.TabPane key="balances" tab="假期余额">
+        <div class="mb-4 flex flex-wrap items-center gap-3">
+          <span>年度</span>
+          <InputNumber v-model:value="balanceYear" :min="2020" :max="2100" />
+          <Button v-if="canInitBalances" @click="handleInitBalances">
+            初始化在职员工额度
+          </Button>
+        </div>
+        <h4 class="mb-2">我的余额</h4>
+        <Table
+          :columns="myBalanceColumns"
+          :data-source="myBalances"
+          :loading="loadingBalances"
+          :pagination="false"
+          class="mb-6"
+          row-key="id"
+        />
+        <template v-if="canViewTeamBalances">
+          <h4 class="mb-2">团队/全员余额</h4>
+          <Table
+            :columns="balanceColumns"
+            :data-source="teamBalances"
+            :loading="loadingBalances"
+            :pagination="false"
+            row-key="id"
+          />
+        </template>
       </Tabs.TabPane>
 
       <Tabs.TabPane v-if="canManageTypes" key="types" tab="假期类型">
@@ -355,7 +476,9 @@ onMounted(async () => {
       <Form layout="vertical">
         <Form.Item label="申请人">
           <Input
-            :value="userStore.userInfo?.realName || userStore.userInfo?.username"
+            :value="
+              userStore.userInfo?.realName || userStore.userInfo?.username
+            "
             disabled
           />
         </Form.Item>
@@ -365,6 +488,9 @@ onMounted(async () => {
             :options="typeOptions"
             class="w-full"
           />
+        </Form.Item>
+        <Form.Item v-if="selectedBalanceHint" label="余额提示">
+          <span class="text-gray-500">{{ selectedBalanceHint }}</span>
         </Form.Item>
         <Form.Item label="开始时间" required>
           <DatePicker

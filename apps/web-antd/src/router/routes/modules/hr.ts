@@ -139,6 +139,16 @@ const routes: RouteRecordRaw[] = [
     path: '/comp-perf',
     children: [
       {
+        name: 'HrSalaryMine',
+        path: '/hr/salary-mine',
+        component: () => import('#/views/hr/salary/mine.vue'),
+        meta: {
+          authority: ROLE_ALL,
+          icon: 'lucide:receipt',
+          title: '我的薪资条',
+        },
+      },
+      {
         name: 'HrSalary',
         path: '/hr/salary',
         component: () => import('#/views/hr/salary/index.vue'),

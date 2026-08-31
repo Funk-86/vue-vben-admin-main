@@ -45,13 +45,25 @@ export function hasAnyRole(
   userRoles: string[] | undefined,
   allowed: string[],
 ): boolean {
-  if (!allowed.length) {
+  if (allowed.length === 0) {
     return true;
   }
   if (!userRoles?.length) {
     return false;
   }
   return userRoles.some((role) => allowed.includes(role));
+}
+
+/** 判断是否拥有任一能力码（feat.* / page:*） */
+export function hasAccessCode(
+  codes: string[] | undefined,
+  required: string | string[],
+): boolean {
+  if (!codes?.length) {
+    return false;
+  }
+  const list = Array.isArray(required) ? required : [required];
+  return list.some((code) => codes.includes(code));
 }
 
 /** 仅超级管理员（无 HR / 经理 / 员工等业务角色） */

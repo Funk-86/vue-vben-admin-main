@@ -6,6 +6,7 @@ export interface SalaryPreviewVO {
   actualSalary: number;
   baseSalary: number;
   bonus: number;
+  deductDetail?: string;
   deduction: number;
   empNo?: string;
   employeeId: number;
@@ -15,6 +16,14 @@ export interface SalaryPreviewVO {
   salaryMonth: string;
   taskBonus: number;
   tip?: string;
+}
+
+export interface AttendanceDeductRuleVO {
+  enabled: number;
+  id: number;
+  remark?: string;
+  ruleCode: string;
+  unitAmount: number;
 }
 
 export interface SalaryBaseDictVO {
@@ -36,6 +45,32 @@ export interface TaskScoreBonusDictVO {
 
 export async function getSalaryList(params?: PageQuery) {
   return requestClient.get<PageResult<SalaryVO>>('/salary', { params });
+}
+
+export async function getMySalaryList(
+  params?: PageQuery & { salaryMonth?: string },
+) {
+  return requestClient.get<PageResult<SalaryVO>>('/salary/mine', { params });
+}
+
+export async function getMySalaryById(id: number) {
+  return requestClient.get<SalaryVO>(`/salary/mine/${id}`);
+}
+
+export async function getDeductRules() {
+  return requestClient.get<AttendanceDeductRuleVO[]>('/salary/deduct-rules');
+}
+
+export async function updateDeductRule(
+  id: number,
+  data: {
+    enabled: number;
+    remark?: string;
+    ruleCode: string;
+    unitAmount: number;
+  },
+) {
+  return requestClient.put(`/salary/deduct-rules/${id}`, data);
 }
 
 export async function getSalaryById(id: number) {
