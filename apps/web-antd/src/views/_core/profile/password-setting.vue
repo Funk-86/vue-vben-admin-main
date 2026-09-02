@@ -59,9 +59,9 @@ const passwordSettingRef = ref<InstanceType<typeof ProfilePasswordSetting>>();
 async function handleSubmit(values: Record<string, string>) {
   try {
     await changePasswordApi({
-      confirmPassword: values.confirmPassword,
-      newPassword: values.newPassword,
-      oldPassword: values.oldPassword,
+      confirmPassword: values.confirmPassword ?? '',
+      newPassword: values.newPassword ?? '',
+      oldPassword: values.oldPassword ?? '',
     });
     message.success('密码修改成功');
     passwordSettingRef.value?.getFormApi()?.resetForm();

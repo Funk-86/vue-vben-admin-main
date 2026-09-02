@@ -1,6 +1,7 @@
 import * as tf from '@tensorflow/tfjs-core';
-import '@tensorflow/tfjs-backend-webgl';
 import * as faceapi from '@vladmandic/face-api';
+
+import '@tensorflow/tfjs-backend-webgl';
 
 const DESCRIPTOR_SIZE = 128;
 const MATCH_THRESHOLD = 0.6;
@@ -11,7 +12,7 @@ const MODEL_BASE =
   'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model';
 
 let modelsLoaded = false;
-let modelsLoading: Promise<void> | null = null;
+let modelsLoading: null | Promise<void> = null;
 
 export async function loadFaceModels() {
   if (modelsLoaded) {
@@ -65,13 +66,13 @@ export async function extractAverageDescriptor(
   const avg = new Float32Array(DESCRIPTOR_SIZE);
   for (let i = 0; i < DESCRIPTOR_SIZE; i++) {
     avg[i] =
-      samples.reduce((sum, item) => sum + item[i], 0) / samples.length;
+      samples.reduce((sum, item) => sum + (item[i] ?? 0), 0) / samples.length;
   }
   return avg;
 }
 
 export function descriptorToArray(descriptor: Float32Array): number[] {
-  return Array.from(descriptor);
+  return [...descriptor];
 }
 
 export function euclideanDistance(a: Float32Array, b: Float32Array) {

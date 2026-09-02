@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { UserSettingVO } from '#/api/core/user-setting';
+
 import { computed, onMounted, ref } from 'vue';
 
 import { ProfileNotificationSetting } from '@vben/common-ui';
@@ -8,11 +10,10 @@ import { message } from 'ant-design-vue';
 import {
   getUserSettings,
   updateNotificationSettings,
-  type UserSettingVO,
 } from '#/api/core/user-setting';
 
 const loading = ref(false);
-const settings = ref<UserSettingVO | null>(null);
+const settings = ref<null | UserSettingVO>(null);
 
 const formSchema = computed(() => {
   const s = settings.value;
@@ -69,6 +70,9 @@ onMounted(load);
 </script>
 <template>
   <div v-if="!loading || settings">
-    <ProfileNotificationSetting :form-schema="formSchema" @change="onChange" />
+    <ProfileNotificationSetting
+      :form-schema="formSchema"
+      @change="(payload: any) => onChange(payload)"
+    />
   </div>
 </template>

@@ -4,7 +4,7 @@ import type { LeaveBalanceVO, LeaveRequestVO, LeaveTypeVO } from '#/api/hr';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
-import { useAccessStore, useUserStore } from '@vben/stores';
+import { useUserStore } from '@vben/stores';
 
 import {
   Button,
@@ -38,29 +38,20 @@ import {
   updateLeaveType,
 } from '#/api/hr';
 import { COMMON_STATUS, LEAVE_REQUEST_STATUS_MAP } from '#/views/hr/constants';
-import { hasAccessCode } from '#/views/hr/roles';
+import { useHrAccess } from '#/views/hr/roles';
 
 const userStore = useUserStore();
-const accessStore = useAccessStore();
+const { canFeat } = useHrAccess();
 
-const canApprove = computed(() =>
-  hasAccessCode(accessStore.accessCodes, 'feat.leave.approve'),
-);
+const canApprove = computed(() => canFeat('feat.leave.approve'));
 
-const canManageTypes = computed(() =>
-  hasAccessCode(accessStore.accessCodes, 'feat.org.manage'),
-);
+const canManageTypes = computed(() => canFeat('feat.org.manage'));
 
 const canViewTeamBalances = computed(() =>
-  hasAccessCode(accessStore.accessCodes, [
-    'feat.leave.approve',
-    'feat.leave.balance.manage',
-  ]),
+  canFeat(['feat.leave.approve', 'feat.leave.balance.manage']),
 );
 
-const canInitBalances = computed(() =>
-  hasAccessCode(accessStore.accessCodes, 'feat.leave.balance.manage'),
-);
+const canInitBalances = computed(() => canFeat('feat.leave.balance.manage'));
 
 const activeTab = ref('requests');
 const loadingRequests = ref(false);
@@ -332,8 +323,8 @@ onMounted(async () => {
           row-key="id"
           @change="
             (pag) => {
-              requestPagination.current = pag.current;
-              requestPagination.pageSize = pag.pageSize;
+              requestPagination.current = pag.current ?? 1;
+              requestPagination.pageSize = pag.pageSize ?? 10;
               loadRequests();
             }
           "
@@ -348,7 +339,7 @@ onMounted(async () => {
                   <Button
                     size="small"
                     type="link"
-                    @click="handleApprove(record)"
+                    @click="handleApprove(record as any)"
                   >
                     通过
                   </Button>
@@ -356,12 +347,16 @@ onMounted(async () => {
                     danger
                     size="small"
                     type="link"
-                    @click="handleReject(record)"
+                    @click="handleReject(record as any)"
                   >
                     拒绝
                   </Button>
                 </template>
-                <Button size="small" type="link" @click="handleCancel(record)">
+                <Button
+                  size="small"
+                  type="link"
+                  @click="handleCancel(record as any)"
+                >
                   撤销
                 </Button>
               </Space>
@@ -422,12 +417,16 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'action'">
               <Space>
-                <Button size="small" type="link" @click="openTypeEdit(record)">
+                <Button
+                  size="small"
+                  type="link"
+                  @click="openTypeEdit(record as any)"
+                >
                   编辑
                 </Button>
                 <Popconfirm
                   title="确定禁用该类型？"
-                  @confirm="handleDeleteType(record)"
+                  @confirm="handleDeleteType(record as any)"
                 >
                   <Button danger size="small" type="link">禁用</Button>
                 </Popconfirm>

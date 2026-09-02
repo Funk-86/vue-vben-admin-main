@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import type { TablePaginationConfig } from 'ant-design-vue/es/table';
+
 import type { EmployeeVO, SalaryVO } from '#/api/hr';
 import type { AttendanceDeductRuleVO } from '#/api/hr/salary';
 
@@ -37,6 +39,11 @@ import {
   updateSalary,
 } from '#/api/hr';
 import { SALARY_STATUS_MAP } from '#/views/hr/constants';
+import { useHrAccess } from '#/views/hr/roles';
+import { onTablePageChange } from '#/views/hr/table-utils';
+
+const { canFeat } = useHrAccess();
+const canManageSalary = computed(() => canFeat('feat.salary.manage'));
 
 const loading = ref(false);
 const list = ref<SalaryVO[]>([]);
@@ -112,8 +119,10 @@ async function loadData(page?: { current: number; pageSize: number }) {
   }
 }
 
-function handleTableChange(pag: { current: number; pageSize: number }) {
-  loadData({ current: pag.current, pageSize: pag.pageSize });
+function handleTableChange(pag: TablePaginationConfig) {
+  onTablePageChange(pag, pagination, () =>
+    loadData({ current: pagination.current, pageSize: pagination.pageSize }),
+  );
 }
 
 function openCreate() {
@@ -268,7 +277,7 @@ onMounted(async () => {
   >
     <Tabs v-model:active-key="activeTab">
       <Tabs.TabPane key="list" tab="薪资列表">
-        <div class="mb-4">
+        <div v-if="canManageSalary" class="mb-4">
           <Button type="primary" @click="openCreate">生成/新增薪资</Button>
         </div>
 
@@ -288,26 +297,26 @@ onMounted(async () => {
               </Tag>
             </template>
             <template v-else-if="column.key === 'action'">
-              <Space>
+              <Space v-if="canManageSalary">
                 <Button
                   v-if="record.status === 0"
                   size="small"
                   type="link"
-                  @click="openEdit(record)"
+                  @click="openEdit(record as any)"
                 >
                   编辑
                 </Button>
                 <Popconfirm
                   v-if="record.status === 0"
                   title="确认发放该薪资？"
-                  @confirm="handlePay(record)"
+                  @confirm="handlePay(record as any)"
                 >
                   <Button size="small" type="link">发放</Button>
                 </Popconfirm>
                 <Popconfirm
                   v-if="record.status === 0"
                   title="确定删除？"
-                  @confirm="handleDelete(record)"
+                  @confirm="handleDelete(record as any)"
                 >
                   <Button danger size="small" type="link">删除</Button>
                 </Popconfirm>
@@ -317,7 +326,7 @@ onMounted(async () => {
         </Table>
       </Tabs.TabPane>
 
-      <Tabs.TabPane key="rules" tab="扣款规则">
+      <Tabs.TabPane v-if="canManageSalary" key="rules" tab="扣款规则">
         <Table
           :columns="ruleColumns"
           :data-source="deductRules"
@@ -338,12 +347,12 @@ onMounted(async () => {
               <Switch
                 :checked="record.enabled === 1"
                 @change="
-                  (checked: boolean) => (record.enabled = checked ? 1 : 0)
+                  (checked) => (record.enabled = checked === true ? 1 : 0)
                 "
               />
             </template>
             <template v-else-if="column.key === 'action'">
-              <Button size="small" type="link" @click="saveRule(record)">
+              <Button size="small" type="link" @click="saveRule(record as any)">
                 保存
               </Button>
             </template>

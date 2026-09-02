@@ -1,35 +1,33 @@
 <script lang="ts" setup>
 import type { NotificationItem } from '@vben/layouts';
 
+import type { NotificationVO } from '#/api/hr/notification';
+
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { AuthenticationLoginExpiredModal } from '@vben/common-ui';
 import { useWatermark } from '@vben/hooks';
-import {
-  BasicLayout,
-  Notification,
-  UserDropdown,
-} from '@vben/layouts';
+import { BasicLayout, Notification, UserDropdown } from '@vben/layouts';
 import { preferences, usePreferences } from '@vben/preferences';
 import { useAccessStore, useUserStore } from '@vben/stores';
 
 import {
   buildNotificationStreamUrl,
+  createStreamTicket,
   getNotifications,
   markAllNotificationsRead,
   markNotificationRead,
-  type NotificationVO,
 } from '#/api/hr/notification';
 import AiAssistant from '#/components/ai-assistant/index.vue';
 import AppLockScreen from '#/layouts/lock-screen.vue';
 import { $t } from '#/locales';
 import { useAuthStore } from '#/store';
-import { ROLE_NAME_MAP } from '#/views/hr/roles';
 import LoginForm from '#/views/_core/authentication/login.vue';
+import { ROLE_NAME_MAP } from '#/views/hr/roles';
 
 const POLL_INTERVAL_MS = 30_000;
-const SSE_RECONNECT_BASE_MS = 2_000;
+const SSE_RECONNECT_BASE_MS = 2000;
 const SSE_RECONNECT_MAX_MS = 30_000;
 
 const notifications = ref<NotificationItem[]>([]);
@@ -177,36 +175,47 @@ function scheduleSseReconnect() {
   }, delay);
 }
 
-function startSse() {
+async function startSse() {
   stopSse();
-  const token = accessStore.accessToken;
-  if (!token) {
+  if (!accessStore.accessToken) {
     return;
   }
-  const es = new EventSource(buildNotificationStreamUrl(token));
-  eventSource.value = es;
-
-  es.addEventListener('connected', () => {
-    sseRetryMs.value = SSE_RECONNECT_BASE_MS;
-  });
-
-  es.addEventListener('unread', () => {
-    void loadNotifications();
-  });
-
-  es.onerror = () => {
-    es.close();
-    if (eventSource.value === es) {
-      eventSource.value = null;
+  try {
+    const ticketVo = await createStreamTicket();
+    if (!ticketVo?.ticket) {
+      scheduleSseReconnect();
+      return;
     }
+    const es = new EventSource(buildNotificationStreamUrl(ticketVo.ticket));
+    eventSource.value = es;
+
+    es.addEventListener('connected', () => {
+      sseRetryMs.value = SSE_RECONNECT_BASE_MS;
+    });
+
+    es.addEventListener('unread', () => {
+      void loadNotifications();
+    });
+
+    es.addEventListener('error', () => {
+      es.close();
+      if (eventSource.value === es) {
+        eventSource.value = null;
+      }
+      scheduleSseReconnect();
+    });
+  } catch {
     scheduleSseReconnect();
-  };
+  }
 }
 
 function onVisibilityChange() {
   if (document.visibilityState === 'visible' && accessStore.accessToken) {
     void loadNotifications();
-    if (!eventSource.value || eventSource.value.readyState === EventSource.CLOSED) {
+    if (
+      !eventSource.value ||
+      eventSource.value.readyState === EventSource.CLOSED
+    ) {
       startSse();
     }
   }
@@ -261,7 +270,7 @@ const viewAll = () => {
 };
 
 const handleClick = (item: NotificationItem) => {
-  if (item.id != null) {
+  if (item.id !== null && item.id !== undefined) {
     void markRead(item.id);
   }
   if (item.link) {

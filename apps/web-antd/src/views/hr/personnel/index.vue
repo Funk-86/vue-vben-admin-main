@@ -4,7 +4,6 @@ import type { DepartmentVO, PersonnelChangeVO, PositionVO } from '#/api/hr';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
-import { useUserStore } from '@vben/stores';
 
 import {
   Button,
@@ -12,16 +11,14 @@ import {
   Form,
   Input,
   InputNumber,
+  message,
   Modal,
   Select,
   Space,
   Table,
   Tag,
-  message,
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
-
-import '#/views/hr/hr-common.css';
 
 import {
   approvePersonnelChange,
@@ -34,7 +31,9 @@ import {
   getPositionsByDept,
 } from '#/api/hr';
 import { flattenDepartments } from '#/views/hr/constants';
-import { hasAnyRole, ROLE_ALL, ROLE_MANAGER_UP } from '#/views/hr/roles';
+import { useHrAccess } from '#/views/hr/roles';
+
+import '#/views/hr/hr-common.css';
 
 const STATUS_COLOR: Record<number, string> = {
   0: 'gold',
@@ -44,13 +43,10 @@ const STATUS_COLOR: Record<number, string> = {
   4: 'green',
 };
 
-const userStore = useUserStore();
-const canApprove = computed(() =>
-  hasAnyRole(userStore.userInfo?.roles, ROLE_MANAGER_UP),
-);
-const canApply = computed(() =>
-  hasAnyRole(userStore.userInfo?.roles, ROLE_ALL),
-);
+const { canFeat } = useHrAccess();
+const canApprove = computed(() => canFeat('feat.personnel.approve'));
+const canApply = computed(() => canFeat('feat.personnel.apply'));
+const canEffect = computed(() => canFeat('feat.personnel.effect'));
 
 const loading = ref(false);
 const list = ref<PersonnelChangeVO[]>([]);
@@ -168,7 +164,12 @@ async function submitCreate() {
     message.warning('调岗请选择目标部门与岗位');
     return;
   }
-  if (form.changeType === 2 && (form.newSalary == null || form.newSalary <= 0)) {
+  if (
+    form.changeType === 2 &&
+    (form.newSalary === null ||
+      form.newSalary === undefined ||
+      form.newSalary <= 0)
+  ) {
     message.warning('请填写新底薪');
     return;
   }
@@ -211,7 +212,10 @@ onMounted(async () => {
 </script>
 
 <template>
-  <Page title="入转调离" description="调岗调薪、离职、入职完善：申请 → 审批 → 生效">
+  <Page
+    title="入转调离"
+    description="调岗调薪、离职、入职完善：申请 → 审批 → 生效"
+  >
     <div class="mb-4 flex flex-wrap items-center gap-3">
       <Select
         v-model:value="query.changeType"
@@ -249,7 +253,9 @@ onMounted(async () => {
       >
         查询
       </Button>
-      <Button v-if="canApply" type="primary" @click="openCreate">发起申请</Button>
+      <Button v-if="canApply" type="primary" @click="openCreate">
+        发起申请
+      </Button>
     </div>
 
     <Table
@@ -271,7 +277,7 @@ onMounted(async () => {
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'summary'">
-          {{ summaryText(record) }}
+          {{ summaryText(record as any) }}
         </template>
         <template v-else-if="column.key === 'status'">
           <Tag :color="STATUS_COLOR[record.status] || 'default'">
@@ -298,7 +304,7 @@ onMounted(async () => {
               拒绝
             </Button>
             <Button
-              v-if="canApprove && record.status === 1"
+              v-if="canEffect && record.status === 1"
               type="link"
               size="small"
               @click="onEffect(record.id)"
@@ -318,7 +324,12 @@ onMounted(async () => {
       </template>
     </Table>
 
-    <Modal v-model:open="createOpen" title="发起异动申请" @ok="submitCreate" width="560">
+    <Modal
+      v-model:open="createOpen"
+      title="发起异动申请"
+      @ok="submitCreate"
+      width="560"
+    >
       <Form layout="vertical" class="mt-4">
         <Form.Item label="类型" required>
           <Select

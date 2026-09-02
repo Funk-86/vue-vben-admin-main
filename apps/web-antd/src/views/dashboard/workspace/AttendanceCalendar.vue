@@ -1,10 +1,19 @@
 <script lang="ts" setup>
 import type { Dayjs } from 'dayjs';
+
 import type { DashboardCalendar } from '#/api/hr/dashboard';
 
 import { computed, ref, watch } from 'vue';
 
-import { Button, Card, Col, DatePicker, Row, Spin, Statistic } from 'ant-design-vue';
+import {
+  Button,
+  Card,
+  Col,
+  DatePicker,
+  Row,
+  Spin,
+  Statistic,
+} from 'ant-design-vue';
 import dayjs from 'dayjs';
 
 import { getDashboardCalendar } from '#/api/hr';
@@ -15,17 +24,21 @@ const loading = ref(false);
 const currentMonth = ref<Dayjs>(dayjs().startOf('month'));
 const calendar = ref<DashboardCalendar>();
 
-const STATUS_META: Record<
-  number,
-  { bg: string; label: string; text: string }
-> = {
-  0: { bg: '#f5f5f5', label: '无记录', text: '#8c8c8c' },
-  1: { bg: '#b7eb8f', label: '正常', text: '#389e0d' },
-  2: { bg: '#ffe58f', label: '迟到', text: '#d48806' },
-  3: { bg: '#ffd591', label: '早退', text: '#d46b08' },
-  4: { bg: '#ffa39e', label: '缺勤', text: '#cf1322' },
-  5: { bg: '#d9d9d9', label: '请假', text: '#595959' },
+const DEFAULT_STATUS = {
+  bg: '#f5f5f5',
+  label: '无记录',
+  text: '#8c8c8c',
 };
+
+const STATUS_META: Record<number, { bg: string; label: string; text: string }> =
+  {
+    0: DEFAULT_STATUS,
+    1: { bg: '#b7eb8f', label: '正常', text: '#389e0d' },
+    2: { bg: '#ffe58f', label: '迟到', text: '#d48806' },
+    3: { bg: '#ffd591', label: '早退', text: '#d46b08' },
+    4: { bg: '#ffa39e', label: '缺勤', text: '#cf1322' },
+    5: { bg: '#d9d9d9', label: '请假', text: '#595959' },
+  };
 
 const monthTitle = computed(() => currentMonth.value.format('YYYY年M月'));
 
@@ -77,7 +90,7 @@ function onMonthPick(value: Dayjs | string) {
 }
 
 function cellStyle(status: number | undefined) {
-  const meta = STATUS_META[status ?? 0] ?? STATUS_META[0];
+  const meta = STATUS_META[status ?? 0] ?? DEFAULT_STATUS;
   return {
     backgroundColor: meta.bg,
     color: meta.text,
@@ -127,7 +140,9 @@ watch(currentMonth, loadCalendar, { immediate: true });
         {{ monthTitle }}
       </div>
 
-      <div class="mt-3 grid grid-cols-7 gap-1 text-center text-xs text-gray-500">
+      <div
+        class="mt-3 grid grid-cols-7 gap-1 text-center text-xs text-gray-500"
+      >
         <div v-for="label in WEEK_LABELS" :key="label" class="py-1 font-medium">
           {{ label }}
         </div>
@@ -154,7 +169,7 @@ watch(currentMonth, loadCalendar, { immediate: true });
           <span
             class="inline-block h-3 w-3 rounded"
             :style="{ backgroundColor: meta.bg }"
-          />
+          ></span>
           {{ meta.label }}
         </span>
       </div>

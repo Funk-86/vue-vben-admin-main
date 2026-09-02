@@ -4,23 +4,20 @@ import type { PerformanceReviewVO, PerformanceTaskHintVO } from '#/api/hr';
 import { computed, onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
-import { useUserStore } from '@vben/stores';
 
 import {
   Button,
   Form,
   Input,
+  message,
   Modal,
   Popconfirm,
   Select,
   Space,
   Table,
   Tag,
-  message,
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
-
-import '#/views/hr/hr-common.css';
 
 import {
   confirmPerformance,
@@ -32,7 +29,9 @@ import {
   submitPerformance,
   updatePerformance,
 } from '#/api/hr';
-import { hasAnyRole, ROLE_ALL, ROLE_MANAGER_UP } from '#/views/hr/roles';
+import { useHrAccess } from '#/views/hr/roles';
+
+import '#/views/hr/hr-common.css';
 
 const GRADE_OPTIONS = [
   { label: '优', value: 1 },
@@ -48,13 +47,9 @@ const STATUS_COLOR: Record<number, string> = {
   2: 'success',
 };
 
-const userStore = useUserStore();
-const canManage = computed(() =>
-  hasAnyRole(userStore.userInfo?.roles, ROLE_MANAGER_UP),
-);
-const canView = computed(() =>
-  hasAnyRole(userStore.userInfo?.roles, ROLE_ALL),
-);
+const { canFeat } = useHrAccess();
+const canManage = computed(() => canFeat('feat.performance.score'));
+const canView = computed(() => canFeat('feat.performance.view'));
 
 const loading = ref(false);
 const list = ref<PerformanceReviewVO[]>([]);
@@ -69,8 +64,8 @@ const query = reactive({
 });
 
 const modalOpen = ref(false);
-const editingId = ref<number | null>(null);
-const hint = ref<PerformanceTaskHintVO | null>(null);
+const editingId = ref<null | number>(null);
+const hint = ref<null | PerformanceTaskHintVO>(null);
 const hintLoading = ref(false);
 const form = reactive({
   comment: '',
@@ -87,7 +82,12 @@ const columns = [
   { dataIndex: 'period', key: 'period', title: '周期', width: 120 },
   { dataIndex: 'scoreGradeLabel', key: 'score', title: '评级', width: 70 },
   { dataIndex: 'task', key: 'task', title: '任务表现', width: 140 },
-  { dataIndex: 'reviewerName', key: 'reviewerName', title: '评分人', width: 90 },
+  {
+    dataIndex: 'reviewerName',
+    key: 'reviewerName',
+    title: '评分人',
+    width: 90,
+  },
   { dataIndex: 'status', key: 'status', title: '状态', width: 90 },
   { key: 'action', title: '操作', width: 220 },
 ];
@@ -185,11 +185,9 @@ async function save(submit: boolean) {
     comment: form.comment || undefined,
     submit,
   };
-  if (editingId.value != null) {
-    await updatePerformance(editingId.value, payload);
-  } else {
-    await createPerformance(payload);
-  }
+  await (editingId.value !== null && editingId.value !== undefined
+    ? updatePerformance(editingId.value, payload)
+    : createPerformance(payload));
   message.success(submit ? '已提交' : '已保存草稿');
   modalOpen.value = false;
   await loadList();
@@ -221,7 +219,10 @@ onMounted(async () => {
 </script>
 
 <template>
-  <Page title="绩效考核" description="月/季考核单，经理五级评分，确认后进入员工档案">
+  <Page
+    title="绩效考核"
+    description="月/季考核单，经理五级评分，确认后进入员工档案"
+  >
     <div class="mb-4 flex flex-wrap items-center gap-3">
       <Select
         v-if="canManage"
@@ -277,7 +278,9 @@ onMounted(async () => {
       >
         查询
       </Button>
-      <Button v-if="canManage" type="primary" @click="openCreate">新建考核</Button>
+      <Button v-if="canManage" type="primary" @click="openCreate">
+        新建考核
+      </Button>
     </div>
 
     <Table
@@ -303,7 +306,9 @@ onMounted(async () => {
         </template>
         <template v-else-if="column.key === 'task'">
           <span class="text-xs text-gray-600">
-            完成 {{ record.taskDoneCount ?? 0 }}/{{ record.taskTotalCount ?? 0 }}
+            完成 {{ record.taskDoneCount ?? 0 }}/{{
+              record.taskTotalCount ?? 0
+            }}
             <template v-if="record.taskAvgGrade != null">
               · 均分 {{ record.taskAvgGrade }}
             </template>
@@ -320,7 +325,7 @@ onMounted(async () => {
               v-if="canManage && record.status !== 2"
               type="link"
               size="small"
-              @click="openEdit(record)"
+              @click="openEdit(record as any)"
             >
               编辑
             </Button>
@@ -411,7 +416,11 @@ onMounted(async () => {
           </Space>
         </Form.Item>
         <Form.Item label="五级评分" required>
-          <Select v-model:value="form.scoreGrade" :options="GRADE_OPTIONS" class="w-full" />
+          <Select
+            v-model:value="form.scoreGrade"
+            :options="GRADE_OPTIONS"
+            class="w-full"
+          />
         </Form.Item>
         <Form.Item label="评语">
           <Input.TextArea v-model:value="form.comment" :rows="3" />

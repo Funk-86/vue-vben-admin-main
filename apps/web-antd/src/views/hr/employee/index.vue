@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import type { TablePaginationConfig } from 'ant-design-vue/es/table';
+
 import type { DepartmentVO, EmployeeVO, PositionVO } from '#/api/hr';
 
 import { computed, onMounted, reactive, ref } from 'vue';
@@ -22,9 +24,6 @@ import {
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
-import '#/views/hr/hr-common.css';
-
-import AvatarUpload from '#/components/avatar-upload/index.vue';
 import {
   createEmployee,
   deleteEmployee,
@@ -35,6 +34,7 @@ import {
   runProbationRemind,
   updateEmployee,
 } from '#/api/hr';
+import AvatarUpload from '#/components/avatar-upload/index.vue';
 import {
   EMPLOYEE_STATUS_MAP,
   EMPLOYMENT_TYPE_MAP,
@@ -44,22 +44,22 @@ import {
 import {
   hasAnyRole,
   HR_ROLE,
-  ROLE_HR_STAFF,
-  ROLE_MANAGER_UP,
   ROLE_NAME_MAP,
+  useHrAccess,
 } from '#/views/hr/roles';
+import { asSelectNumber, onTablePageChange } from '#/views/hr/table-utils';
+
+import '#/views/hr/hr-common.css';
 
 const userStore = useUserStore();
+const { canFeat } = useHrAccess();
 /** 仅超级管理员可在编辑时重置登录密码 */
 const canResetPassword = computed(() =>
   hasAnyRole(userStore.userInfo?.roles, [HR_ROLE.SUPER_ADMIN]),
 );
-const canRunProbationRemind = computed(() =>
-  hasAnyRole(userStore.userInfo?.roles, ROLE_HR_STAFF),
-);
-const canExport = computed(() =>
-  hasAnyRole(userStore.userInfo?.roles, ROLE_MANAGER_UP),
-);
+const canRunProbationRemind = computed(() => canFeat('feat.org.manage'));
+const canExport = computed(() => canFeat('feat.employee.manage'));
+const canManage = computed(() => canFeat('feat.employee.manage'));
 const remindLoading = ref(false);
 const exportLoading = ref(false);
 
@@ -157,8 +157,10 @@ async function loadData(page?: { current: number; pageSize: number }) {
   }
 }
 
-function handleTableChange(pag: { current: number; pageSize: number }) {
-  loadData({ current: pag.current, pageSize: pag.pageSize });
+function handleTableChange(pag: TablePaginationConfig) {
+  onTablePageChange(pag, pagination, () =>
+    loadData({ current: pagination.current, pageSize: pagination.pageSize }),
+  );
 }
 
 function openCreate() {
@@ -203,7 +205,11 @@ async function openEdit(record: EmployeeVO) {
   modalOpen.value = true;
 }
 
-async function onDeptChange(deptId: number) {
+async function onDeptChange(value: unknown) {
+  const deptId = asSelectNumber(value);
+  if (deptId === undefined) {
+    return;
+  }
   formState.positionId = undefined;
   await loadPositions(deptId);
 }
@@ -247,7 +253,11 @@ async function handleSubmit() {
           ? { password: formState.password }
           : {}),
       };
-      if (canResetPassword.value && formState.password && formState.password.length < 6) {
+      if (
+        canResetPassword.value &&
+        formState.password &&
+        formState.password.length < 6
+      ) {
         message.warning('密码至少 6 位');
         return;
       }
@@ -321,12 +331,10 @@ onMounted(async () => {
 <template>
   <Page description="员工档案维护" title="员工管理">
     <div class="mb-4 flex flex-wrap gap-2">
-      <Button type="primary" @click="openCreate">新增员工</Button>
-      <Button
-        v-if="canExport"
-        :loading="exportLoading"
-        @click="handleExport"
-      >
+      <Button v-if="canManage" type="primary" @click="openCreate">
+        新增员工
+      </Button>
+      <Button v-if="canExport" :loading="exportLoading" @click="handleExport">
         导出 Excel
       </Button>
       <Button
@@ -374,13 +382,13 @@ onMounted(async () => {
           </Tag>
         </template>
         <template v-else-if="column.key === 'action'">
-          <Space>
-            <Button size="small" type="link" @click="openEdit(record)">
+          <Space v-if="canManage">
+            <Button size="small" type="link" @click="openEdit(record as any)">
               编辑
             </Button>
             <Popconfirm
               title="确定删除该员工？"
-              @confirm="handleDelete(record)"
+              @confirm="handleDelete(record as any)"
             >
               <Button danger size="small" type="link">删除</Button>
             </Popconfirm>
@@ -396,10 +404,7 @@ onMounted(async () => {
       @ok="handleSubmit"
     >
       <Form layout="vertical">
-        <div
-          v-if="editing"
-          class="mb-4 flex flex-col items-center gap-2"
-        >
+        <div v-if="editing" class="mb-4 flex flex-col items-center gap-2">
           <AvatarUpload
             avatar-class="size-24"
             :employee-id="editing.id"
@@ -409,7 +414,10 @@ onMounted(async () => {
           />
           <span class="text-xs text-gray-500">点击头像可更换（JPG/PNG/WEBP，≤2MB）</span>
         </div>
-        <div v-if="!editing" class="mb-2 rounded bg-gray-50 p-3 text-sm text-gray-600">
+        <div
+          v-if="!editing"
+          class="mb-2 rounded bg-gray-50 p-3 text-sm text-gray-600"
+        >
           创建员工时将同步开通系统登录账号
         </div>
         <div class="grid grid-cols-2 gap-x-4">
@@ -441,10 +449,7 @@ onMounted(async () => {
               />
             </Form.Item>
           </template>
-          <Form.Item
-            v-else-if="canResetPassword"
-            label="重置登录密码"
-          >
+          <Form.Item v-else-if="canResetPassword" label="重置登录密码">
             <Input.Password
               v-model:value="formState.password"
               autocomplete="new-password"

@@ -1,10 +1,10 @@
+import type { RouteRecordRaw } from 'vue-router';
+
 import type {
   ComponentRecordType,
   GenerateMenuAndRoutesOptions,
   RouteRecordStringComponent,
 } from '@vben/types';
-
-import type { RouteRecordRaw } from 'vue-router';
 
 import { generateAccessible } from '@vben/access';
 import { preferences } from '@vben/preferences';
@@ -29,7 +29,7 @@ function filterRoutesByPageDict(
   routes: RouteRecordRaw[],
   pagePaths: Set<string>,
 ): RouteRecordRaw[] {
-  if (!pagePaths.size) {
+  if (pagePaths.size === 0) {
     return routes;
   }
 
@@ -49,10 +49,13 @@ function filterRoutesByPageDict(
     });
 
     if (children.length > 0) {
-      return clearAuthority({ ...route, children });
+      return clearAuthority({ ...route, children }) as RouteRecordRaw;
     }
     if (allowedLeaf) {
-      return clearAuthority({ ...route, children: undefined });
+      return clearAuthority({
+        ...route,
+        children: undefined,
+      } as RouteRecordRaw);
     }
     return null;
   };
@@ -77,13 +80,13 @@ async function generateAccess(options: GenerateMenuAndRoutesOptions) {
 
   return await generateAccessible(preferences.app.accessMode, {
     ...options,
-    routes: routes as RouteRecordStringComponent[],
+    routes: routes as unknown as RouteRecordStringComponent[],
     // 前端路由模式不请求后端菜单，避免无效 /menu/all 等待
     fetchMenuListAsync: async () => [],
     forbiddenComponent,
     layoutMap,
     pageMap,
-  });
+  } as unknown as GenerateMenuAndRoutesOptions);
 }
 
 export { generateAccess };

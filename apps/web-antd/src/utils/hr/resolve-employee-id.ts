@@ -12,7 +12,7 @@ export async function resolveMyEmployeeId(): Promise<number | undefined> {
   const list = await fetchAllEmployees();
 
   if (list.length === 1) {
-    return list[0].id;
+    return list[0]?.id;
   }
 
   const realName = userStore.userInfo?.realName;
@@ -24,7 +24,7 @@ export async function resolveMyEmployeeId(): Promise<number | undefined> {
   }
 
   if (!hasAnyRole(roles, ROLE_MANAGER_UP) && list.length > 0) {
-    return list[0].id;
+    return list[0]?.id;
   }
 
   return undefined;

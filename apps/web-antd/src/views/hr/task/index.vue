@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import type { TableColumnsType } from 'ant-design-vue';
+
 import type {
   TaskAssigneeVO,
   TaskAttachmentVO,
@@ -8,15 +10,12 @@ import type {
   TaskVO,
 } from '#/api/hr';
 
-import type { TableColumnsType } from 'ant-design-vue';
-
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
-import { useUserStore } from '@vben/stores';
-import { useWindowSize } from '@vueuse/core';
 
+import { useWindowSize } from '@vueuse/core';
 import {
   Button,
   DatePicker,
@@ -25,6 +24,7 @@ import {
   Image,
   Input,
   InputNumber,
+  message,
   Modal,
   Progress,
   Segmented,
@@ -36,7 +36,6 @@ import {
   Tag,
   Timeline,
   Upload,
-  message,
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
@@ -64,17 +63,13 @@ import {
   TASK_PRIORITY_MAP,
   TASK_STATUS_MAP,
 } from '#/views/hr/constants';
-import { hasAnyRole, ROLE_HR_STAFF, ROLE_MANAGER_UP } from '#/views/hr/roles';
+import { useHrAccess } from '#/views/hr/roles';
 
-const userStore = useUserStore();
 const route = useRoute();
 const router = useRouter();
-const canCreate = computed(() =>
-  hasAnyRole(userStore.userInfo?.roles, ROLE_MANAGER_UP),
-);
-const canOverdueRemind = computed(() =>
-  hasAnyRole(userStore.userInfo?.roles, ROLE_HR_STAFF),
-);
+const { canFeat } = useHrAccess();
+const canCreate = computed(() => canFeat('feat.task.create'));
+const canOverdueRemind = computed(() => canFeat('feat.org.manage'));
 /** 经理/HR 可查看历史附件并删除 */
 const canManageAttachments = computed(
   () => canCreate.value || canOverdueRemind.value,
@@ -84,7 +79,7 @@ const canScoreAssignee = computed(
   () => canCreate.value || canOverdueRemind.value,
 );
 
-const scope = ref<'mine' | 'created'>('mine');
+const scope = ref<'created' | 'mine'>('mine');
 const viewMode = ref<'board' | 'list'>('list');
 const loading = ref(false);
 const remindLoading = ref(false);
@@ -98,18 +93,38 @@ const board = ref<TaskBoardVO>({
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 
 const boardColumns = computed(() => [
-  { key: 'pending' as const, title: '待接收', color: '#faad14', list: board.value.pending },
-  { key: 'inProgress' as const, title: '进行中', color: '#1677ff', list: board.value.inProgress },
-  { key: 'done' as const, title: '已完成', color: '#52c41a', list: board.value.done },
-  { key: 'closed' as const, title: '已关闭', color: '#8c8c8c', list: board.value.closed },
+  {
+    key: 'pending' as const,
+    title: '待接收',
+    color: '#faad14',
+    list: board.value.pending,
+  },
+  {
+    key: 'inProgress' as const,
+    title: '进行中',
+    color: '#1677ff',
+    list: board.value.inProgress,
+  },
+  {
+    key: 'done' as const,
+    title: '已完成',
+    color: '#52c41a',
+    list: board.value.done,
+  },
+  {
+    key: 'closed' as const,
+    title: '已关闭',
+    color: '#8c8c8c',
+    list: board.value.closed,
+  },
 ]);
 
 const createOpen = ref(false);
 const detailOpen = ref(false);
 const progressOpen = ref(false);
 const rejectOpen = ref(false);
-const detail = ref<TaskDetailVO | null>(null);
-const currentId = ref<number | null>(null);
+const detail = ref<null | TaskDetailVO>(null);
+const currentId = ref<null | number>(null);
 const employeeOptions = ref<{ label: string; value: number }[]>([]);
 const aiDraftLoading = ref(false);
 const aiDraftPrompt = ref('');
@@ -139,7 +154,7 @@ const progressForm = reactive({
 const rejectReason = ref('');
 
 const scoreOpen = ref(false);
-const scoreTarget = ref<TaskAssigneeVO | null>(null);
+const scoreTarget = ref<null | TaskAssigneeVO>(null);
 const scoreGrade = ref<number>(1);
 const scoreBonusOptions = ref<TaskScoreBonusDictVO[]>([]);
 const scoreSubmitting = ref(false);
@@ -286,11 +301,7 @@ async function loadBoard() {
 }
 
 async function refreshView() {
-  if (viewMode.value === 'board') {
-    await loadBoard();
-  } else {
-    await loadList();
-  }
+  await (viewMode.value === 'board' ? loadBoard() : loadList());
 }
 
 async function onRunOverdueRemind() {
@@ -353,7 +364,7 @@ async function submitCreate() {
     message.warning('请输入标题');
     return;
   }
-  if (!createForm.assigneeIds.length) {
+  if (createForm.assigneeIds.length === 0) {
     message.warning('请选择执行人');
     return;
   }
@@ -407,7 +418,7 @@ async function generateTaskDraft() {
 async function openDetail(id: number) {
   detail.value = await getTaskDetail(id);
   detailOpen.value = true;
-  if (canScoreAssignee.value && !scoreBonusOptions.value.length) {
+  if (canScoreAssignee.value && scoreBonusOptions.value.length === 0) {
     try {
       scoreBonusOptions.value = await getScoreBonusDictList();
     } catch {
@@ -420,7 +431,7 @@ async function openScore(record: TaskAssigneeVO) {
   if (!detail.value?.id) return;
   scoreTarget.value = record;
   scoreGrade.value = record.scoreGrade ?? 1;
-  if (!scoreBonusOptions.value.length) {
+  if (scoreBonusOptions.value.length === 0) {
     scoreBonusOptions.value = await getScoreBonusDictList();
   }
   scoreOpen.value = true;
@@ -452,7 +463,7 @@ function isImageAttachment(file: TaskAttachmentVO) {
 
 async function onUploadAttachment(file: File) {
   const taskId = detail.value?.id ?? currentId.value;
-  if (taskId == null) return false;
+  if (taskId === null || taskId === undefined) return false;
   if (file.size > 10 * 1024 * 1024) {
     message.warning('附件不能超过 10MB');
     return false;
@@ -481,13 +492,9 @@ async function onUploadAttachment(file: File) {
 
 async function onDeleteAttachment(attachmentId: number) {
   const taskId = detail.value?.id ?? currentId.value;
-  if (taskId == null) return;
+  if (taskId === null || taskId === undefined) return;
   // 进度弹窗：员工可撤回本次刚上传的；详情：仅经理可删
-  if (
-    detailOpen.value &&
-    !progressOpen.value &&
-    !canManageAttachments.value
-  ) {
+  if (detailOpen.value && !progressOpen.value && !canManageAttachments.value) {
     message.warning('无权删除历史附件，请联系部门经理');
     return;
   }
@@ -510,7 +517,7 @@ async function onDeleteAttachment(attachmentId: number) {
 /** 从 AI 卡片 / 外链带入的 taskId 自动打开详情 */
 async function openDetailFromQuery() {
   const raw = route.query.taskId;
-  if (raw == null || raw === '') return;
+  if (raw === null || raw === undefined || raw === '') return;
   const id = Number(Array.isArray(raw) ? raw[0] : raw);
   if (!Number.isFinite(id) || id <= 0) return;
   try {
@@ -538,7 +545,7 @@ function openProgress(id: number, current?: number) {
 }
 
 async function submitProgress() {
-  if (currentId.value == null) return;
+  if (currentId.value === null || currentId.value === undefined) return;
   detail.value = await updateTaskProgress(currentId.value, {
     progress: progressForm.progress,
     feedback: progressForm.feedback || undefined,
@@ -555,7 +562,7 @@ function openReject(id: number) {
 }
 
 async function submitReject() {
-  if (currentId.value == null) return;
+  if (currentId.value === null || currentId.value === undefined) return;
   if (!rejectReason.value.trim()) {
     message.warning('请填写驳回原因');
     return;
@@ -580,13 +587,13 @@ async function onUrge(id: number) {
   }
 }
 
-function onTabChange(key: string | number) {
-  scope.value = key as 'mine' | 'created';
+function onTabChange(key: number | string) {
+  scope.value = key as 'created' | 'mine';
   pagination.current = 1;
   refreshView();
 }
 
-function onViewModeChange(mode: string | number) {
+function onViewModeChange(mode: number | string) {
   viewMode.value = mode as 'board' | 'list';
   refreshView();
 }
@@ -599,7 +606,7 @@ onMounted(async () => {
 watch(
   () => route.query.taskId,
   async (taskId) => {
-    if (taskId != null && taskId !== '') {
+    if (taskId !== null && taskId !== undefined && taskId !== '') {
       await openDetailFromQuery();
     }
   },
@@ -607,7 +614,11 @@ watch(
 </script>
 
 <template>
-  <Page auto-content-height description="上级下发任务，下级接收并更新进度" title="任务管理">
+  <Page
+    auto-content-height
+    description="上级下发任务，下级接收并更新进度"
+    title="任务管理"
+  >
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <Tabs
         :active-key="scope"
@@ -633,7 +644,9 @@ watch(
         >
           逾期提醒补跑
         </Button>
-        <Button v-if="canCreate" type="primary" @click="openCreate">新建任务</Button>
+        <Button v-if="canCreate" type="primary" @click="() => openCreate()">
+          新建任务
+        </Button>
       </Space>
     </div>
 
@@ -649,10 +662,15 @@ watch(
         <div
           class="flex items-center justify-between border-b border-gray-100 px-3 py-2"
         >
-          <span class="font-medium" :style="{ color: col.color }">{{ col.title }}</span>
+          <span class="font-medium" :style="{ color: col.color }">{{
+            col.title
+          }}</span>
           <Tag class="m-0">{{ col.list.length }}</Tag>
         </div>
-        <div class="flex-1 space-y-2 overflow-y-auto p-2" style="max-height: 60vh">
+        <div
+          class="flex-1 space-y-2 overflow-y-auto p-2"
+          style="max-height: 60vh"
+        >
           <Spin v-if="loading" class="block w-full py-8 text-center" />
           <template v-else>
             <button
@@ -663,8 +681,12 @@ watch(
               @click="openDetail(item.id)"
             >
               <div class="mb-1 flex items-start justify-between gap-2">
-                <span class="line-clamp-2 font-medium text-gray-900">{{ item.title }}</span>
-                <Tag v-if="item.overdue" color="error" class="m-0 shrink-0">逾期</Tag>
+                <span class="line-clamp-2 font-medium text-gray-900">{{
+                  item.title
+                }}</span>
+                <Tag v-if="item.overdue" color="error" class="m-0 shrink-0">
+                  逾期
+                </Tag>
               </div>
               <div class="mb-2 text-xs text-gray-500">
                 {{ item.creatorName || '-' }}
@@ -721,9 +743,9 @@ watch(
         </template>
         <template v-else-if="column.key === 'myStatus'">
           {{
-            record.myStatus == null
+            record.myStatus === null || record.myStatus === undefined
               ? '-'
-              : TASK_ASSIGNEE_STATUS_MAP[record.myStatus] ?? '-'
+              : (TASK_ASSIGNEE_STATUS_MAP[record.myStatus] ?? '-')
           }}
         </template>
         <template v-else-if="column.key === 'progress'">
@@ -768,7 +790,11 @@ watch(
               驳回
             </Button>
             <Button
-              v-if="canCreate && scope === 'created' && (record.status === 0 || record.status === 1)"
+              v-if="
+                canCreate &&
+                scope === 'created' &&
+                (record.status === 0 || record.status === 1)
+              "
               size="small"
               type="link"
               @click="onUrge(record.id)"
@@ -776,7 +802,11 @@ watch(
               催办
             </Button>
             <Button
-              v-if="canCreate && scope === 'created' && (record.status === 0 || record.status === 1)"
+              v-if="
+                canCreate &&
+                scope === 'created' &&
+                (record.status === 0 || record.status === 1)
+              "
               danger
               size="small"
               type="link"
@@ -877,7 +907,9 @@ watch(
             :show-upload-list="false"
             accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx"
           >
-            <Button size="small" :loading="attachmentUploading">上传附件</Button>
+            <Button size="small" :loading="attachmentUploading">
+              上传附件
+            </Button>
           </Upload>
           <div class="mt-1 text-xs text-gray-400">
             支持图片/PDF/Word，最大 10MB；此处仅显示本次上传的附件
@@ -1000,7 +1032,9 @@ watch(
         <p class="mb-2">整体进度：{{ detail.progress ?? 0 }}%</p>
         <p class="mb-2">创建人：{{ detail.creatorName || '-' }}</p>
         <p class="mb-2">截止：{{ detail.dueTime || '-' }}</p>
-        <p v-if="detail.projectId" class="mb-2">项目ID：{{ detail.projectId }}</p>
+        <p v-if="detail.projectId" class="mb-2">
+          项目ID：{{ detail.projectId }}
+        </p>
         <p v-if="detail.parentId && detail.parentId > 0" class="mb-4">
           父任务：#{{ detail.parentId }}
         </p>
@@ -1083,7 +1117,7 @@ watch(
                 v-if="canScoreAssignee && record.status === 2"
                 size="small"
                 type="link"
-                @click="openScore(record)"
+                @click="openScore(record as any)"
               >
                 {{ record.scoreGrade ? '改评' : '评分' }}
               </Button>
@@ -1099,7 +1133,9 @@ watch(
               :show-upload-list="false"
               accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx"
             >
-              <Button size="small" :loading="attachmentUploading">上传附件</Button>
+              <Button size="small" :loading="attachmentUploading">
+                上传附件
+              </Button>
             </Upload>
             <span class="ml-2 text-xs text-gray-400">经理可查看并删除全部历史附件</span>
           </div>
@@ -1147,7 +1183,9 @@ watch(
                   >
                     {{ file.fileName }}
                   </a>
-                  <span v-else class="truncate text-xs">{{ file.fileName }}</span>
+                  <span v-else class="truncate text-xs">{{
+                    file.fileName
+                  }}</span>
                 </div>
                 <button
                   type="button"
@@ -1165,10 +1203,7 @@ watch(
 
         <h4 class="mb-2 font-medium">操作记录</h4>
         <Timeline>
-          <Timeline.Item
-            v-for="(log, idx) in detail.logs || []"
-            :key="idx"
-          >
+          <Timeline.Item v-for="(log, idx) in detail.logs || []" :key="idx">
             <div>
               <strong>{{ log.action }}</strong>
               · {{ log.operatorName || '-' }}

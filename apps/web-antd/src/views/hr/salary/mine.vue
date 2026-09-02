@@ -85,7 +85,8 @@ onMounted(() => loadData());
       :pagination="pagination"
       row-key="id"
       @change="
-        (pag) => loadData({ current: pag.current, pageSize: pag.pageSize })
+        (pag) =>
+          loadData({ current: pag.current ?? 1, pageSize: pag.pageSize ?? 10 })
       "
     >
       <template #bodyCell="{ column, record }">
@@ -93,7 +94,7 @@ onMounted(() => loadData());
           <Tag color="green">{{ SALARY_STATUS_MAP[record.status] }}</Tag>
         </template>
         <template v-else-if="column.key === 'action'">
-          <Button size="small" type="link" @click="openDetail(record)">
+          <Button size="small" type="link" @click="openDetail(record as any)">
             明细
           </Button>
         </template>

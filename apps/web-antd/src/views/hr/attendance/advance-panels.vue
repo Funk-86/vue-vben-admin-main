@@ -7,8 +7,6 @@ import type {
 
 import { computed, onMounted, reactive, ref } from 'vue';
 
-import { useAccessStore } from '@vben/stores';
-
 import {
   Button,
   DatePicker,
@@ -47,12 +45,10 @@ import {
   ATTENDANCE_STATUS_MAP,
   LEAVE_REQUEST_STATUS_MAP,
 } from '#/views/hr/constants';
-import { hasAccessCode } from '#/views/hr/roles';
+import { useHrAccess } from '#/views/hr/roles';
 
-const accessStore = useAccessStore();
-const canApprove = computed(() =>
-  hasAccessCode(accessStore.accessCodes, 'feat.attendance.approve'),
-);
+const { canFeat } = useHrAccess();
+const canApprove = computed(() => canFeat('feat.attendance.approve'));
 
 const activeTab = ref('overtime');
 const loading = ref(false);

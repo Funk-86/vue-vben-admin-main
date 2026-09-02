@@ -8,10 +8,7 @@ import { useAccessStore, useUserStore } from '@vben/stores';
 
 import { message } from 'ant-design-vue';
 
-import {
-  fetchProfileApi,
-  updateProfileApi,
-} from '#/api/core/auth';
+import { fetchProfileApi, updateProfileApi } from '#/api/core/auth';
 import { saveUserInfoCache } from '#/api/core/user';
 import { ROLE_NAME_MAP } from '#/views/hr/roles';
 
@@ -147,8 +144,8 @@ async function handleSubmit(values: Record<string, any>) {
         userId: result.username,
         username: result.username,
       };
-      userStore.setUserInfo(next);
-      saveUserInfoCache(next);
+      userStore.setUserInfo(next as any);
+      saveUserInfoCache(next as any);
     }
     message.success('个人信息已更新');
     await loadProfile();
@@ -168,10 +165,7 @@ onMounted(async () => {
 
 <template>
   <div class="w-full max-w-xl">
-    <p
-      v-if="!boundEmployee"
-      class="mb-4 text-sm text-orange-500"
-    >
+    <p v-if="!boundEmployee" class="mb-4 text-sm text-orange-500">
       当前账号未关联员工档案，可修改用户名；姓名等档案信息不可编辑。
     </p>
     <ProfileBaseSetting

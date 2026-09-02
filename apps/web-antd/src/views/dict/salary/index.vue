@@ -45,7 +45,7 @@ const activeTab = ref('base');
 const baseLoading = ref(false);
 const baseList = ref<SalaryBaseDictVO[]>([]);
 const baseModalOpen = ref(false);
-const baseEditing = ref<SalaryBaseDictVO | null>(null);
+const baseEditing = ref<null | SalaryBaseDictVO>(null);
 const positionOptions = ref<{ label: string; value: number }[]>([]);
 const baseForm = reactive({
   baseSalary: 0,
@@ -141,7 +141,7 @@ async function removeBaseDict(record: SalaryBaseDictVO) {
 const scoreLoading = ref(false);
 const scoreList = ref<TaskScoreBonusDictVO[]>([]);
 const scoreModalOpen = ref(false);
-const scoreEditing = ref<TaskScoreBonusDictVO | null>(null);
+const scoreEditing = ref<null | TaskScoreBonusDictVO>(null);
 const scoreForm = reactive({
   bonusAmount: 0,
   grade: 1,
@@ -160,7 +160,12 @@ const GRADE_PRESETS: Record<number, string> = {
 const scoreColumns = [
   { dataIndex: 'grade', key: 'grade', title: '等级', width: 80 },
   { dataIndex: 'gradeLabel', key: 'gradeLabel', title: '名称', width: 100 },
-  { dataIndex: 'bonusAmount', key: 'bonusAmount', title: '奖金金额', width: 120 },
+  {
+    dataIndex: 'bonusAmount',
+    key: 'bonusAmount',
+    title: '奖金金额',
+    width: 120,
+  },
   { dataIndex: 'status', key: 'status', title: '状态', width: 90 },
   { key: 'action', title: '操作', width: 160 },
 ];
@@ -199,8 +204,9 @@ function openScoreEdit(record: TaskScoreBonusDictVO) {
 watch(
   () => scoreForm.grade,
   (grade) => {
-    if (!scoreEditing.value && GRADE_PRESETS[grade]) {
-      scoreForm.gradeLabel = GRADE_PRESETS[grade]!;
+    const preset = GRADE_PRESETS[grade];
+    if (!scoreEditing.value && preset) {
+      scoreForm.gradeLabel = preset;
     }
   },
 );
@@ -230,7 +236,7 @@ async function removeScoreDict(record: TaskScoreBonusDictVO) {
 }
 
 watch(activeTab, (tab) => {
-  if (tab === 'score' && !scoreList.value.length) {
+  if (tab === 'score' && scoreList.value.length === 0) {
     loadScoreDict();
   }
 });
@@ -241,7 +247,10 @@ onMounted(async () => {
 </script>
 
 <template>
-  <Page description="岗位底薪与任务评分奖金档位（仅超级管理员）" title="薪资字典">
+  <Page
+    description="岗位底薪与任务评分奖金档位（仅超级管理员）"
+    title="薪资字典"
+  >
     <Tabs v-model:active-key="activeTab">
       <Tabs.TabPane key="base" tab="底薪字典">
         <div class="mb-4">
@@ -262,10 +271,17 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'action'">
               <Space>
-                <Button size="small" type="link" @click="openBaseEdit(record)">
+                <Button
+                  size="small"
+                  type="link"
+                  @click="openBaseEdit(record as any)"
+                >
                   编辑
                 </Button>
-                <Popconfirm title="确定删除？" @confirm="removeBaseDict(record)">
+                <Popconfirm
+                  title="确定删除？"
+                  @confirm="removeBaseDict(record as any)"
+                >
                   <Button danger size="small" type="link">删除</Button>
                 </Popconfirm>
               </Space>
@@ -293,12 +309,16 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'action'">
               <Space>
-                <Button size="small" type="link" @click="openScoreEdit(record)">
+                <Button
+                  size="small"
+                  type="link"
+                  @click="openScoreEdit(record as any)"
+                >
                   编辑
                 </Button>
                 <Popconfirm
                   title="确定删除？"
-                  @confirm="removeScoreDict(record)"
+                  @confirm="removeScoreDict(record as any)"
                 >
                   <Button danger size="small" type="link">删除</Button>
                 </Popconfirm>

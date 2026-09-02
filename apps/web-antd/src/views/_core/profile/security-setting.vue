@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import type { MfaSetupVO, UserSettingVO } from '#/api/core/user-setting';
+
 import { computed, onMounted, ref } from 'vue';
 
 import { ProfileSecuritySetting } from '@vben/common-ui';
 
-import { Form, Input, Modal, message } from 'ant-design-vue';
+import { Form, Input, message, Modal } from 'ant-design-vue';
 
 import {
   confirmMfa,
@@ -11,12 +13,10 @@ import {
   setSecurityQuestion,
   setupMfa,
   toggleSecuritySetting,
-  type MfaSetupVO,
-  type UserSettingVO,
 } from '#/api/core/user-setting';
 
 const loading = ref(false);
-const settings = ref<UserSettingVO | null>(null);
+const settings = ref<null | UserSettingVO>(null);
 
 const questionOpen = ref(false);
 const questionForm = ref({ question: '您的出生城市是？', answer: '' });
@@ -119,7 +119,10 @@ async function onChange(payload: { fieldName: string; value: boolean }) {
 }
 
 async function submitQuestion() {
-  if (!questionForm.value.question.trim() || !questionForm.value.answer.trim()) {
+  if (
+    !questionForm.value.question.trim() ||
+    !questionForm.value.answer.trim()
+  ) {
     message.warning('请填写密保问题与答案');
     return;
   }
@@ -150,7 +153,7 @@ onMounted(load);
     <ProfileSecuritySetting
       v-if="!loading || settings"
       :form-schema="formSchema"
-      @change="onChange"
+      @change="(payload: any) => onChange(payload)"
     />
 
     <Modal
@@ -187,7 +190,7 @@ onMounted(load);
         <Form.Item label="6 位动态验证码" required>
           <Input
             v-model:value="mfaCode"
-            maxlength="6"
+            :maxlength="6"
             placeholder="输入 App 中的验证码"
           />
         </Form.Item>

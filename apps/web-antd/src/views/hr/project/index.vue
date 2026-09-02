@@ -4,7 +4,6 @@ import type { ProjectVO, TaskVO } from '#/api/hr';
 import { computed, onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
-import { useUserStore } from '@vben/stores';
 
 import {
   Button,
@@ -13,6 +12,7 @@ import {
   Form,
   Input,
   InputNumber,
+  message,
   Modal,
   Progress,
   Select,
@@ -20,7 +20,6 @@ import {
   Switch,
   Table,
   Tag,
-  message,
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
@@ -30,13 +29,13 @@ import {
   createTask,
   fetchAllEmployees,
   getProjectDetail,
-  getProjectTasks,
   getProjects,
+  getProjectTasks,
   updateProject,
   updateProjectProgress,
 } from '#/api/hr';
 import { TASK_STATUS_MAP } from '#/views/hr/constants';
-import { hasAnyRole, ROLE_HR_STAFF, ROLE_MANAGER_UP } from '#/views/hr/roles';
+import { useHrAccess } from '#/views/hr/roles';
 
 const PROJECT_STATUS_MAP: Record<number, string> = {
   0: '规划中',
@@ -45,13 +44,9 @@ const PROJECT_STATUS_MAP: Record<number, string> = {
   3: '已关闭',
 };
 
-const userStore = useUserStore();
-const canManage = computed(() =>
-  hasAnyRole(userStore.userInfo?.roles, ROLE_MANAGER_UP),
-);
-const canSeeAll = computed(() =>
-  hasAnyRole(userStore.userInfo?.roles, ROLE_HR_STAFF),
-);
+const { canFeat } = useHrAccess();
+const canManage = computed(() => canFeat('feat.project.manage'));
+const canSeeAll = computed(() => canFeat('feat.org.manage'));
 
 const loading = ref(false);
 const list = ref<ProjectVO[]>([]);
@@ -65,9 +60,9 @@ const createOpen = ref(false);
 const detailOpen = ref(false);
 const progressOpen = ref(false);
 const taskCreateOpen = ref(false);
-const detail = ref<ProjectVO | null>(null);
+const detail = ref<null | ProjectVO>(null);
 const projectTasks = ref<TaskVO[]>([]);
-const currentId = ref<number | null>(null);
+const currentId = ref<null | number>(null);
 
 const createForm = reactive({
   description: '',
@@ -167,23 +162,25 @@ function openProgress() {
 }
 
 async function submitProgress() {
-  if (currentId.value == null) return;
-  await updateProjectProgress(currentId.value, {
+  const projectId = currentId.value;
+  if (projectId === null || projectId === undefined) return;
+  await updateProjectProgress(projectId, {
     progress: progressForm.progress,
     locked: progressForm.locked,
   });
   message.success('进度已更新');
   progressOpen.value = false;
-  await openDetail(currentId.value);
+  await openDetail(projectId);
   await loadList();
 }
 
 async function submitClose() {
-  if (currentId.value == null) return;
+  const projectId = currentId.value;
+  if (projectId === null || projectId === undefined) return;
   Modal.confirm({
     title: '确认关闭该项目？',
     onOk: async () => {
-      await closeProject(currentId.value!);
+      await closeProject(projectId);
       message.success('项目已关闭');
       detailOpen.value = false;
       await loadList();
@@ -201,12 +198,13 @@ function openTaskCreate() {
 }
 
 async function submitTaskCreate() {
-  if (currentId.value == null) return;
+  const projectId = currentId.value;
+  if (projectId === null || projectId === undefined) return;
   if (!taskForm.title.trim()) {
     message.warning('请输入任务标题');
     return;
   }
-  if (!taskForm.assigneeIds.length) {
+  if (taskForm.assigneeIds.length === 0) {
     message.warning('请选择执行人');
     return;
   }
@@ -214,7 +212,7 @@ async function submitTaskCreate() {
     title: taskForm.title.trim(),
     content: taskForm.content || undefined,
     priority: taskForm.priority,
-    projectId: currentId.value,
+    projectId,
     dueTime: taskForm.dueTime
       ? taskForm.dueTime.format('YYYY-MM-DDTHH:mm:ss')
       : undefined,
@@ -222,13 +220,14 @@ async function submitTaskCreate() {
   });
   message.success('任务已挂接到项目');
   taskCreateOpen.value = false;
-  await openDetail(currentId.value);
+  await openDetail(projectId);
   await loadList();
 }
 
 async function saveMembers() {
-  if (!detail.value || currentId.value == null) return;
-  await updateProject(currentId.value, {
+  const projectId = currentId.value;
+  if (!detail.value || projectId === null || projectId === undefined) return;
+  await updateProject(projectId, {
     name: detail.value.name,
     description: detail.value.description,
     ownerId: detail.value.ownerId,
@@ -238,7 +237,7 @@ async function saveMembers() {
     status: detail.value.status,
   });
   message.success('成员已保存');
-  await openDetail(currentId.value);
+  await openDetail(projectId);
 }
 
 onMounted(async () => {
@@ -285,7 +284,9 @@ onMounted(async () => {
           }
         "
       />
-      <Button v-if="canManage" type="primary" @click="openCreate">新建项目</Button>
+      <Button v-if="canManage" type="primary" @click="openCreate">
+        新建项目
+      </Button>
     </div>
 
     <Table
@@ -453,10 +454,19 @@ onMounted(async () => {
       </template>
     </Drawer>
 
-    <Modal v-model:open="progressOpen" title="确认项目进度" @ok="submitProgress">
+    <Modal
+      v-model:open="progressOpen"
+      title="确认项目进度"
+      @ok="submitProgress"
+    >
       <Form layout="vertical" class="mt-4">
         <Form.Item label="进度 %">
-          <InputNumber v-model:value="progressForm.progress" :min="0" :max="100" class="w-full" />
+          <InputNumber
+            v-model:value="progressForm.progress"
+            :min="0"
+            :max="100"
+            class="w-full"
+          />
         </Form.Item>
         <Form.Item label="锁定进度（不再被任务自动覆盖）">
           <Switch v-model:checked="progressForm.locked" />
@@ -464,7 +474,11 @@ onMounted(async () => {
       </Form>
     </Modal>
 
-    <Modal v-model:open="taskCreateOpen" title="挂接任务到项目" @ok="submitTaskCreate">
+    <Modal
+      v-model:open="taskCreateOpen"
+      title="挂接任务到项目"
+      @ok="submitTaskCreate"
+    >
       <Form layout="vertical" class="mt-4">
         <Form.Item label="标题" required>
           <Input v-model:value="taskForm.title" />

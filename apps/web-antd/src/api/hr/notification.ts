@@ -20,6 +20,11 @@ export interface UnreadPushVO {
   unreadCount: number;
 }
 
+export interface StreamTicketVO {
+  expiresIn: number;
+  ticket: string;
+}
+
 const { apiURL } = useAppConfig(import.meta.env, import.meta.env.PROD);
 
 export async function getNotifications(
@@ -42,8 +47,13 @@ export async function markAllNotificationsRead() {
   return requestClient.put('/notifications/read-all');
 }
 
-/** EventSource 无法带 Authorization，使用 query token；apiURL 已含 /api */
-export function buildNotificationStreamUrl(token: string) {
+/** 申请 SSE 一次性连接 ticket（需 Authorization Bearer） */
+export async function createStreamTicket() {
+  return requestClient.post<StreamTicketVO>('/notifications/stream-ticket');
+}
+
+/** EventSource 使用短时 ticket，不再在 URL 中传递 JWT */
+export function buildNotificationStreamUrl(ticket: string) {
   const base = apiURL.endsWith('/') ? apiURL.slice(0, -1) : apiURL;
-  return `${base}/notifications/stream?token=${encodeURIComponent(token)}`;
+  return `${base}/notifications/stream?ticket=${encodeURIComponent(ticket)}`;
 }

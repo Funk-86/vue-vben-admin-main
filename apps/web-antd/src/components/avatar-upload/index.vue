@@ -3,11 +3,11 @@ import type { UploadProps } from 'ant-design-vue';
 
 import { computed, ref } from 'vue';
 
-import { preferences } from '@vben/preferences';
 import { VbenAvatar } from '@vben/common-ui';
+import { preferences } from '@vben/preferences';
 import { useUserStore } from '@vben/stores';
 
-import { Upload, message } from 'ant-design-vue';
+import { message, Upload } from 'ant-design-vue';
 
 import { uploadEmployeeAvatarApi, uploadMyAvatarApi } from '#/api/core/avatar';
 import { saveUserInfoCache } from '#/api/core/user';
@@ -22,7 +22,9 @@ const props = withDefaults(
   }>(),
   {
     avatarClass: 'size-20',
+    employeeId: undefined,
     mode: 'my',
+    src: undefined,
   },
 );
 
@@ -70,8 +72,8 @@ const customRequest: UploadProps['customRequest'] = async (options) => {
       const current = userStore.userInfo;
       if (current) {
         const info = { ...current, avatar: url };
-        userStore.setUserInfo(info);
-        saveUserInfoCache(info);
+        userStore.setUserInfo(info as any);
+        saveUserInfoCache(info as any);
       }
     }
 

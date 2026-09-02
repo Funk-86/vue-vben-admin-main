@@ -25,19 +25,24 @@ import {
   getPositionsByDept,
   updatePosition,
 } from '#/api/hr';
-import '#/views/hr/hr-common.css';
 import {
   COMMON_STATUS,
   flattenDepartments,
   POSITION_LEVEL_MAP,
 } from '#/views/hr/constants';
+import { useHrAccess } from '#/views/hr/roles';
+
+import '#/views/hr/hr-common.css';
+
+const { canFeat } = useHrAccess();
+const canManageOrg = computed(() => canFeat('feat.org.manage'));
 
 const loading = ref(false);
 const deptId = ref<number>();
 const deptTree = ref<DepartmentVO[]>([]);
 const list = ref<PositionVO[]>([]);
 const modalOpen = ref(false);
-const editing = ref<PositionVO | null>(null);
+const editing = ref<null | PositionVO>(null);
 
 const formState = reactive({
   deptId: undefined as number | undefined,
@@ -65,7 +70,7 @@ const columns = [
 
 async function loadDepts() {
   deptTree.value = await getDepartmentTree();
-  if (!deptId.value && deptOptions.value.length) {
+  if (!deptId.value && deptOptions.value.length > 0) {
     deptId.value = deptOptions.value[0]?.value;
   }
 }
@@ -160,7 +165,12 @@ onMounted(async () => {
         popup-class-name="hr-filter-select-dropdown"
         show-search
       />
-      <Button :disabled="!deptId" type="primary" @click="openCreate">
+      <Button
+        v-if="canManageOrg"
+        :disabled="!deptId"
+        type="primary"
+        @click="openCreate"
+      >
         新增岗位
       </Button>
     </div>
@@ -182,13 +192,13 @@ onMounted(async () => {
           </Tag>
         </template>
         <template v-else-if="column.key === 'action'">
-          <Space>
-            <Button size="small" type="link" @click="openEdit(record)">
+          <Space v-if="canManageOrg">
+            <Button size="small" type="link" @click="openEdit(record as any)">
               编辑
             </Button>
             <Popconfirm
               title="确定删除该岗位？"
-              @confirm="handleDelete(record)"
+              @confirm="handleDelete(record as any)"
             >
               <Button danger size="small" type="link">删除</Button>
             </Popconfirm>

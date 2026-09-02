@@ -1,3 +1,7 @@
+import { computed } from 'vue';
+
+import { useAccessStore, useUserStore } from '@vben/stores';
+
 /** 后端角色编码（与 schema.sql 一致） */
 export const HR_ROLE = {
   DEPT_MANAGER: 'DEPT_MANAGER',
@@ -40,6 +44,30 @@ export const ROLE_NAME_MAP: Record<string, string> = {
   [HR_ROLE.EMPLOYEE]: '普通员工',
 };
 
+/** 无 page/feat 字典时的角色回退（与 V16 种子能力大致对齐） */
+const FEAT_ROLE_FALLBACK: Record<string, HrRoleCode[]> = {
+  'feat.attendance.approve': ROLE_HR_STAFF,
+  'feat.attendance.self': ROLE_ALL,
+  'feat.audit.view': ROLE_HR_STAFF,
+  'feat.document.self': ROLE_ALL,
+  'feat.employee.manage': ROLE_MANAGER_UP,
+  'feat.leave.approve': ROLE_MANAGER_UP,
+  'feat.leave.apply': ROLE_ALL,
+  'feat.leave.balance.manage': ROLE_HR_STAFF,
+  'feat.org.manage': ROLE_HR_STAFF,
+  'feat.performance.score': ROLE_MANAGER_UP,
+  'feat.performance.view': ROLE_ALL,
+  'feat.personnel.approve': ROLE_MANAGER_UP,
+  'feat.personnel.apply': ROLE_ALL,
+  'feat.project.join': ROLE_ALL,
+  'feat.project.manage': ROLE_MANAGER_UP,
+  'feat.salary.manage': ROLE_HR_STAFF,
+  'feat.salary.self': ROLE_ALL,
+  'feat.stats.view': ROLE_HR_STAFF,
+  'feat.task.create': ROLE_MANAGER_UP,
+  'feat.task.execute': ROLE_ALL,
+};
+
 /** 判断当前用户是否拥有任一允许角色 */
 export function hasAnyRole(
   userRoles: string[] | undefined,
@@ -64,6 +92,35 @@ export function hasAccessCode(
   }
   const list = Array.isArray(required) ? required : [required];
   return list.some((code) => codes.includes(code));
+}
+
+/** 统一 HR 权限：优先 feat/page 字典，无字典时回退角色 */
+export function useHrAccess() {
+  const accessStore = useAccessStore();
+  const userStore = useUserStore();
+
+  const accessCodes = computed(() => accessStore.accessCodes ?? []);
+  const userRoles = computed(() => userStore.userInfo?.roles ?? []);
+
+  function canFeat(required: string | string[]) {
+    if (accessCodes.value.length > 0) {
+      return hasAccessCode(accessCodes.value, required);
+    }
+    const codes = Array.isArray(required) ? required : [required];
+    return codes.some((code) => {
+      const fallback = FEAT_ROLE_FALLBACK[code];
+      return fallback ? hasAnyRole(userRoles.value, fallback) : false;
+    });
+  }
+
+  function canPage(path: string) {
+    if (accessCodes.value.length > 0) {
+      return accessCodes.value.includes(`page:${path}`);
+    }
+    return true;
+  }
+
+  return { accessCodes, canFeat, canPage, userRoles };
 }
 
 /** 仅超级管理员（无 HR / 经理 / 员工等业务角色） */

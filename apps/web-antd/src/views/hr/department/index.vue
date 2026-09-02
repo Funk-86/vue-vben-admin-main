@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { DepartmentVO } from '#/api/hr';
 
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
@@ -26,7 +26,10 @@ import {
   updateDepartment,
 } from '#/api/hr';
 import { COMMON_STATUS } from '#/views/hr/constants';
+import { useHrAccess } from '#/views/hr/roles';
 
+const { canFeat } = useHrAccess();
+const canManageOrg = computed(() => canFeat('feat.org.manage'));
 const loading = ref(false);
 const treeData = ref<DepartmentVO[]>([]);
 const modalOpen = ref(false);
@@ -117,7 +120,7 @@ onMounted(loadData);
 
 <template>
   <Page description="组织架构部门树维护" title="部门管理">
-    <div class="mb-4">
+    <div v-if="canManageOrg" class="mb-4">
       <Button type="primary" @click="openCreate(0)">新增根部门</Button>
     </div>
     <Table
@@ -136,20 +139,16 @@ onMounted(loadData);
           </Tag>
         </template>
         <template v-else-if="column.key === 'action'">
-          <Space>
-            <Button size="small" type="link" @click="openEdit(record)">
+          <Space v-if="canManageOrg">
+            <Button size="small" type="link" @click="openEdit(record as any)">
               编辑
             </Button>
-            <Button
-              size="small"
-              type="link"
-              @click="openCreate(record.id)"
-            >
+            <Button size="small" type="link" @click="openCreate(record.id)">
               新增子部门
             </Button>
             <Popconfirm
               title="确定删除该部门？"
-              @confirm="handleDelete(record)"
+              @confirm="handleDelete(record as any)"
             >
               <Button danger size="small" type="link">删除</Button>
             </Popconfirm>

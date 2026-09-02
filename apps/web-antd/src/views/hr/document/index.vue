@@ -6,16 +6,23 @@ import type {
   PositionVO,
 } from '#/api/hr';
 
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  reactive,
+  ref,
+  watch,
+} from 'vue';
 
 import { Page } from '@vben/common-ui';
-import { useUserStore } from '@vben/stores';
 
 import {
   Button,
   DatePicker,
   Form,
   Input,
+  message,
   Modal,
   Popconfirm,
   Select,
@@ -24,15 +31,12 @@ import {
   Table,
   Tag,
   Upload,
-  message,
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
-import '#/views/hr/hr-common.css';
-
 import {
-  DOC_TYPE_OPTIONS,
   deleteEmployeeDocument,
+  DOC_TYPE_OPTIONS,
   fetchAllEmployees,
   fetchEmployeeDocumentFile,
   getDepartmentTree,
@@ -41,19 +45,13 @@ import {
   uploadEmployeeDocument,
 } from '#/api/hr';
 import { flattenDepartments } from '#/views/hr/constants';
-import {
-  hasAnyRole,
-  ROLE_ALL,
-  ROLE_MANAGER_UP,
-} from '#/views/hr/roles';
+import { useHrAccess } from '#/views/hr/roles';
 
-const userStore = useUserStore();
-const canUpload = computed(() =>
-  hasAnyRole(userStore.userInfo?.roles, ROLE_ALL),
-);
-const canFilterOrg = computed(() =>
-  hasAnyRole(userStore.userInfo?.roles, ROLE_MANAGER_UP),
-);
+import '#/views/hr/hr-common.css';
+
+const { canFeat } = useHrAccess();
+const canUpload = computed(() => canFeat('feat.document.self'));
+const canFilterOrg = computed(() => canFeat('feat.employee.manage'));
 
 const loading = ref(false);
 const list = ref<EmployeeDocumentVO[]>([]);
@@ -106,14 +104,19 @@ const columns = [
   { dataIndex: 'title', key: 'title', title: '标题', ellipsis: true },
   { dataIndex: 'fileName', key: 'fileName', title: '文件名', ellipsis: true },
   { dataIndex: 'expireDate', key: 'expireDate', title: '到期日', width: 120 },
-  { dataIndex: 'uploaderName', key: 'uploaderName', title: '上传人', width: 90 },
+  {
+    dataIndex: 'uploaderName',
+    key: 'uploaderName',
+    title: '上传人',
+    width: 90,
+  },
   { key: 'action', title: '操作', width: 220, fixed: 'right' as const },
 ];
 
 const previewOpen = ref(false);
 const previewLoading = ref(false);
 const previewTitle = ref('文档预览');
-const previewKind = ref<'pdf' | 'word' | 'unsupported'>('unsupported');
+const previewKind = ref<'pdf' | 'unsupported' | 'word'>('unsupported');
 const previewSrc = ref('');
 const previewKey = ref(0);
 const previewRecord = ref<EmployeeDocumentVO | null>(null);
@@ -346,7 +349,7 @@ async function onDelete(record: EmployeeDocumentVO) {
 }
 
 function formatSize(size?: number) {
-  if (size == null) return '-';
+  if (size === null || size === undefined) return '-';
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
@@ -459,13 +462,24 @@ onMounted(async () => {
         </template>
         <template v-else-if="column.key === 'action'">
           <Space>
-            <Button size="small" type="link" @click="openPreview(record)">
+            <Button
+              size="small"
+              type="link"
+              @click="openPreview(record as any)"
+            >
               预览
             </Button>
-            <Button size="small" type="link" @click="downloadDocument(record)">
+            <Button
+              size="small"
+              type="link"
+              @click="downloadDocument(record as any)"
+            >
               下载
             </Button>
-            <Popconfirm title="确定删除该文档？" @confirm="onDelete(record)">
+            <Popconfirm
+              title="确定删除该文档？"
+              @confirm="onDelete(record as any)"
+            >
               <Button danger size="small" type="link">删除</Button>
             </Popconfirm>
           </Space>
@@ -488,12 +502,14 @@ onMounted(async () => {
           :src="previewSrc"
           class="h-[70vh] w-full rounded border-0 bg-gray-50"
           title="document-preview"
-        />
+        ></iframe>
         <div
           v-else-if="previewKind === 'word'"
           class="py-10 text-center text-gray-600"
         >
-          <p class="mb-2">Word 文档建议在新窗口预览，或下载后用本地 Office 打开。</p>
+          <p class="mb-2">
+            Word 文档建议在新窗口预览，或下载后用本地 Office 打开。
+          </p>
           <p class="mb-6 text-xs text-gray-400">
             （页内嵌入微软预览第二次易出现「已重置连接」）
           </p>

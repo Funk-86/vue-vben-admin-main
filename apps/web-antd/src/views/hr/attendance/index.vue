@@ -1,11 +1,13 @@
 <script lang="ts" setup>
+import type { TablePaginationConfig } from 'ant-design-vue/es/table';
+
 import type { AttendanceVO, EmployeeVO } from '#/api/hr';
 import type { FacePunchMode } from '#/components/face-punch-modal/index.vue';
 
 import { computed, onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
-import { useAccessStore, useUserStore } from '@vben/stores';
+import { useUserStore } from '@vben/stores';
 import { downloadFileFromBlob } from '@vben/utils';
 
 import {
@@ -39,10 +41,11 @@ import FacePunchModal from '#/components/face-punch-modal/index.vue';
 import { resolveMyEmployeeId } from '#/utils/hr/resolve-employee-id';
 import AdvancePanels from '#/views/hr/attendance/advance-panels.vue';
 import { ATTENDANCE_STATUS_MAP } from '#/views/hr/constants';
-import { hasAccessCode, hasAnyRole, HR_ROLE } from '#/views/hr/roles';
+import { hasAnyRole, HR_ROLE, useHrAccess } from '#/views/hr/roles';
+import { onTablePageChange } from '#/views/hr/table-utils';
 
 const userStore = useUserStore();
-const accessStore = useAccessStore();
+const { canFeat } = useHrAccess();
 const mainTab = ref('records');
 
 /** 仅超管可选员工代打卡 */
@@ -51,9 +54,7 @@ const isSuperAdmin = computed(() =>
 );
 
 /** HR / 超管可手动补录、编辑、删除 */
-const isHrStaff = computed(() =>
-  hasAccessCode(accessStore.accessCodes, 'feat.org.manage'),
-);
+const isHrStaff = computed(() => canFeat('feat.org.manage'));
 
 const loading = ref(false);
 const exportLoading = ref(false);
@@ -114,8 +115,10 @@ async function loadData(page?: { current: number; pageSize: number }) {
   }
 }
 
-function handleTableChange(pag: { current: number; pageSize: number }) {
-  loadData({ current: pag.current, pageSize: pag.pageSize });
+function handleTableChange(pag: TablePaginationConfig) {
+  onTablePageChange(pag, pagination, () =>
+    loadData({ current: pagination.current, pageSize: pagination.pageSize }),
+  );
 }
 
 async function handleCheckIn() {
@@ -285,12 +288,16 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'action'">
               <Space v-if="isHrStaff">
-                <Button size="small" type="link" @click="openEdit(record)">
+                <Button
+                  size="small"
+                  type="link"
+                  @click="openEdit(record as any)"
+                >
                   编辑
                 </Button>
                 <Popconfirm
                   title="确定删除该记录？"
-                  @confirm="handleDelete(record)"
+                  @confirm="handleDelete(record as any)"
                 >
                   <Button danger size="small" type="link">删除</Button>
                 </Popconfirm>
