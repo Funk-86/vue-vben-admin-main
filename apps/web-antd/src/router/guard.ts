@@ -5,8 +5,8 @@ import { preferences } from '@vben/preferences';
 import { useAccessStore, useUserStore } from '@vben/stores';
 import { startProgress, stopProgress } from '@vben/utils';
 
+import { clearUserInfoCache, loadUserInfoCache } from '#/api';
 import { accessRoutes, coreRouteNames } from '#/router/routes';
-import { clearUserInfoCache } from '#/api';
 import { useAuthStore } from '#/store';
 
 import { generateAccess } from './access';
@@ -95,19 +95,29 @@ function setupAccessGuard(router: Router) {
     // 当前登录用户拥有的角色标识列表
     let userInfo = userStore.userInfo;
     if (!userInfo) {
-      try {
-        userInfo = await authStore.fetchUserInfo();
-      } catch {
-        accessStore.setAccessToken(null);
-        clearUserInfoCache();
-        return {
-          path: LOGIN_PATH,
-          query:
-            to.fullPath === preferences.app.defaultHomePath
-              ? {}
-              : { redirect: encodeURIComponent(to.fullPath) },
-          replace: true,
-        };
+      const cached = loadUserInfoCache();
+      if (cached) {
+        // 先用本地缓存放行首屏，后台再刷新用户信息/权限
+        userStore.setUserInfo(cached);
+        userInfo = cached;
+        void authStore.fetchUserInfo().catch(() => {
+          /* 静默失败，仍用缓存 */
+        });
+      } else {
+        try {
+          userInfo = await authStore.fetchUserInfo();
+        } catch {
+          accessStore.setAccessToken(null);
+          clearUserInfoCache();
+          return {
+            path: LOGIN_PATH,
+            query:
+              to.fullPath === preferences.app.defaultHomePath
+                ? {}
+                : { redirect: encodeURIComponent(to.fullPath) },
+            replace: true,
+          };
+        }
       }
     }
     const userRoles = userInfo.roles ?? [];

@@ -25,6 +25,9 @@ function collectPagePaths(accessCodes: string[]): Set<string> {
   return paths;
 }
 
+/** 不在页面字典里也必须保留（下拉「个人中心」等） */
+const ALWAYS_ALLOW_PATHS = new Set(['/profile']);
+
 function filterRoutesByPageDict(
   routes: RouteRecordRaw[],
   pagePaths: Set<string>,
@@ -40,7 +43,11 @@ function filterRoutesByPageDict(
 
     const path = route.path;
     const isPageLeaf = typeof path === 'string' && path.startsWith('/');
-    const allowedLeaf = isPageLeaf && pagePaths.has(path);
+    const allowedLeaf =
+      isPageLeaf &&
+      (pagePaths.has(path) ||
+        ALWAYS_ALLOW_PATHS.has(path) ||
+        route.meta?.ignoreAccess === true);
 
     // 页面字典生效时，不再用写死的 meta.authority 挡菜单（接口仍有后端鉴权）
     const clearAuthority = (r: RouteRecordRaw): RouteRecordRaw => ({

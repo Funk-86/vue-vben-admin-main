@@ -16,6 +16,7 @@ import {
   buildNotificationStreamUrl,
   createStreamTicket,
   getNotifications,
+  getUnreadNotificationCount,
   markAllNotificationsRead,
   markNotificationRead,
 } from '#/api/hr/notification';
@@ -31,6 +32,7 @@ const SSE_RECONNECT_BASE_MS = 2000;
 const SSE_RECONNECT_MAX_MS = 30_000;
 
 const notifications = ref<NotificationItem[]>([]);
+const unreadCount = ref(0);
 const pollTimer = ref<null | ReturnType<typeof setInterval>>(null);
 const eventSource = ref<EventSource | null>(null);
 const sseReconnectTimer = ref<null | ReturnType<typeof setTimeout>>(null);
@@ -43,14 +45,18 @@ const accessStore = useAccessStore();
 const { destroyWatermark, updateWatermark } = useWatermark();
 const { isDark } = usePreferences();
 
-const showDot = computed(() =>
-  notifications.value.some((item) => !item.isRead),
+const showDot = computed(
+  () =>
+    unreadCount.value <= 0 && notifications.value.some((item) => !item.isRead),
 );
 
 const menus = computed(() => [
   {
     handler: () => {
-      router.push({ name: 'Profile' });
+      // 用 path，避免路由名偶发未注册时 resolve 抛错
+      void router.push('/profile').catch(() => {
+        void router.push({ name: 'Profile' }).catch(() => undefined);
+      });
     },
     icon: 'lucide:user',
     text: $t('page.auth.profile'),
@@ -114,9 +120,23 @@ function toNotificationItem(item: NotificationVO): NotificationItem {
   };
 }
 
+async function loadUnreadCount() {
+  if (!accessStore.accessToken) {
+    unreadCount.value = 0;
+    return;
+  }
+  try {
+    const res = await getUnreadNotificationCount();
+    unreadCount.value = res?.count ?? 0;
+  } catch {
+    unreadCount.value = notifications.value.filter((n) => !n.isRead).length;
+  }
+}
+
 async function loadNotifications() {
   if (!accessStore.accessToken) {
     notifications.value = [];
+    unreadCount.value = 0;
     return;
   }
   try {
@@ -124,6 +144,7 @@ async function loadNotifications() {
     notifications.value = (page?.records ?? []).map((item) =>
       toNotificationItem(item),
     );
+    await loadUnreadCount();
   } catch {
     // 轮询失败不打断页面
   }
@@ -181,7 +202,14 @@ async function startSse() {
     return;
   }
   try {
+    // 退出登录可能发生在 await 前，再次确认 token，避免无凭证请求触发 401 提示
+    if (!accessStore.accessToken) {
+      return;
+    }
     const ticketVo = await createStreamTicket();
+    if (!accessStore.accessToken) {
+      return;
+    }
     if (!ticketVo?.ticket) {
       scheduleSseReconnect();
       return;
@@ -205,7 +233,9 @@ async function startSse() {
       scheduleSseReconnect();
     });
   } catch {
-    scheduleSseReconnect();
+    if (accessStore.accessToken) {
+      scheduleSseReconnect();
+    }
   }
 }
 
@@ -232,6 +262,7 @@ async function handleNoticeClear() {
   try {
     await markAllNotificationsRead();
     notifications.value = [];
+    unreadCount.value = 0;
   } catch {
     // handled
   }
@@ -243,10 +274,12 @@ async function markRead(id: number | string) {
     return;
   }
   item.isRead = true;
+  unreadCount.value = Math.max(0, unreadCount.value - 1);
   try {
     await markNotificationRead(Number(id));
   } catch {
     item.isRead = false;
+    void loadUnreadCount();
   }
 }
 
@@ -260,6 +293,7 @@ async function handleMakeAll() {
     notifications.value.forEach((item) => {
       item.isRead = true;
     });
+    unreadCount.value = 0;
   } catch {
     // handled
   }
@@ -294,18 +328,30 @@ function navigateTo(
   }
 }
 
+function startNotificationServices() {
+  void loadNotifications();
+  startPolling();
+  sseRetryMs.value = SSE_RECONNECT_BASE_MS;
+  startSse();
+}
+
 watch(
   () => accessStore.accessToken,
   (token) => {
     if (token) {
-      void loadNotifications();
-      startPolling();
-      sseRetryMs.value = SSE_RECONNECT_BASE_MS;
-      startSse();
+      // 首屏后再拉通知/SSE，避免与业务页抢带宽
+      if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(() => startNotificationServices(), {
+          timeout: 2500,
+        });
+      } else {
+        setTimeout(startNotificationServices, 1200);
+      }
     } else {
       stopPolling();
       stopSse();
       notifications.value = [];
+      unreadCount.value = 0;
     }
   },
   { immediate: true },
@@ -376,6 +422,7 @@ onUnmounted(() => {
     </template>
     <template #notification>
       <Notification
+        :count="unreadCount"
         :dot="showDot"
         :notifications="notifications"
         @clear="handleNoticeClear"

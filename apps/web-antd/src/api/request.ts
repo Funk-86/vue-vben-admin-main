@@ -32,6 +32,10 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
     console.warn('Access token or refresh token is invalid or expired. ');
     const accessStore = useAccessStore();
     const authStore = useAuthStore();
+    // 主动退出或已无 token 时不再重复登出，避免登录页再弹「未登录」
+    if (!accessStore.accessToken || authStore.isLoggingOut) {
+      return;
+    }
     accessStore.setAccessToken(null);
     if (
       preferences.app.loginExpiredMode === 'modal' &&
@@ -91,7 +95,13 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
     errorMessageResponseInterceptor((msg: string, error) => {
       // 这里可以根据业务进行定制,你可以拿到 error 内的信息进行定制化处理，根据不同的 code 做不同的提示，而不是直接使用 message.error 提示 msg
       // 当前mock接口返回的错误字段是 error 或者 message
-      const responseData = error?.response?.data ?? {};
+      const responseData = error?.response?.data ?? error?.data ?? {};
+      const status = error?.response?.status ?? error?.status;
+      const code = responseData?.code;
+      // 401 由登出/跳转登录处理；主动退出后的竞态请求也不再弹「未登录或登录已过期」
+      if (status === 401 || code === 401) {
+        return;
+      }
       const errorMessage = responseData?.error ?? responseData?.message ?? '';
       // 如果没有错误信息，则会根据状态码进行提示
       message.error(errorMessage || msg);

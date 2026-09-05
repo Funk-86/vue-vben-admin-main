@@ -1,6 +1,6 @@
 import type { Recordable, UserInfo } from '@vben/types';
 
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { LOGIN_PATH } from '@vben/constants';
@@ -18,12 +18,16 @@ import {
 } from '#/api';
 import { $t } from '#/locales';
 
+/** 模块级标记：避免 $reset 清掉状态后，退出竞态请求仍触发二次登出/报错 */
+const loggingOut = ref(false);
+
 export const useAuthStore = defineStore('auth', () => {
   const accessStore = useAccessStore();
   const userStore = useUserStore();
   const router = useRouter();
 
   const loginLoading = ref(false);
+  const isLoggingOut = computed(() => loggingOut.value);
 
   async function authLogin(
     params: Recordable<any>,
@@ -81,18 +85,26 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout(redirect: boolean = true) {
-    clearUserInfoCache();
-    resetAllStores();
-    accessStore.setLoginExpired(false);
+    if (loggingOut.value) {
+      return;
+    }
+    loggingOut.value = true;
+    try {
+      clearUserInfoCache();
+      resetAllStores();
+      accessStore.setLoginExpired(false);
 
-    await router.replace({
-      path: LOGIN_PATH,
-      query: redirect
-        ? {
-            redirect: encodeURIComponent(router.currentRoute.value.fullPath),
-          }
-        : {},
-    });
+      await router.replace({
+        path: LOGIN_PATH,
+        query: redirect
+          ? {
+              redirect: encodeURIComponent(router.currentRoute.value.fullPath),
+            }
+          : {},
+      });
+    } finally {
+      loggingOut.value = false;
+    }
   }
 
   async function fetchUserInfo() {
@@ -112,6 +124,7 @@ export const useAuthStore = defineStore('auth', () => {
     $reset,
     authLogin,
     fetchUserInfo,
+    isLoggingOut,
     loginLoading,
     logout,
   };

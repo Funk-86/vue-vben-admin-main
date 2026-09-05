@@ -99,6 +99,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       icon: 'lucide:user',
       hideInMenu: true,
+      ignoreAccess: true,
       title: $t('page.auth.profile'),
     },
   },
