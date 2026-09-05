@@ -80,9 +80,9 @@ export const TASK_PRIORITY_MAP: Record<number, string> = {
   3: '高',
 };
 
-export function flattenDepartments<T extends { children?: T[] }>(
-  tree: T[],
-): T[] {
+export function flattenDepartments<
+  T extends { children?: T[]; deptName: string; id: number; parentId?: number },
+>(tree: T[]): T[] {
   const result: T[] = [];
   const walk = (nodes: T[]) => {
     nodes.forEach((node) => {
@@ -93,5 +93,32 @@ export function flattenDepartments<T extends { children?: T[] }>(
     });
   };
   walk(tree);
+  return result;
+}
+
+/** 扁平化部门树并生成带层级缩进的下拉标签 */
+export function flattenDepartmentOptions(
+  tree: {
+    children?: typeof tree;
+    deptName: string;
+    id: number;
+    parentId?: number;
+  }[],
+  prefix = '',
+): { label: string; value: number }[] {
+  const result: { label: string; value: number }[] = [];
+  for (const node of tree) {
+    const isRoot =
+      node.parentId === undefined ||
+      node.parentId === null ||
+      node.parentId === 0;
+    const label = isRoot
+      ? `${node.deptName}（公司）`
+      : `${prefix}${node.deptName}`;
+    result.push({ label, value: node.id });
+    if (node.children?.length) {
+      result.push(...flattenDepartmentOptions(node.children, `${prefix}　`));
+    }
+  }
   return result;
 }

@@ -57,6 +57,10 @@ export async function getMySalaryById(id: number) {
   return requestClient.get<SalaryVO>(`/salary/mine/${id}`);
 }
 
+export async function exportMySalaryExcel(params?: { salaryMonth?: string }) {
+  return requestClient.download<Blob>('/salary/mine/export', { params });
+}
+
 export async function getDeductRules() {
   return requestClient.get<AttendanceDeductRuleVO[]>('/salary/deduct-rules');
 }

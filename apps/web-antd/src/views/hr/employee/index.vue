@@ -38,7 +38,7 @@ import AvatarUpload from '#/components/avatar-upload/index.vue';
 import {
   EMPLOYEE_STATUS_MAP,
   EMPLOYMENT_TYPE_MAP,
-  flattenDepartments,
+  flattenDepartmentOptions,
   GENDER_MAP,
 } from '#/views/hr/constants';
 import {
@@ -73,6 +73,12 @@ const editingAvatar = ref('');
 // 分页状态
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 
+const query = reactive({
+  deptId: undefined as number | undefined,
+  keyword: '',
+  status: undefined as number | undefined,
+});
+
 const formState = reactive({
   deptId: undefined as number | undefined,
   email: '',
@@ -102,11 +108,13 @@ const roleOptions = computed(() =>
   })),
 );
 
-const deptOptions = computed(() =>
-  flattenDepartments(deptTree.value).map((d) => ({
-    label: d.deptName,
-    value: d.id,
-  })),
+const deptOptions = computed(() => flattenDepartmentOptions(deptTree.value));
+
+const statusOptions = Object.entries(EMPLOYEE_STATUS_MAP).map(
+  ([val, label]) => ({
+    label,
+    value: Number(val),
+  }),
 );
 
 const positionOptions = computed(() =>
@@ -146,6 +154,9 @@ async function loadData(page?: { current: number; pageSize: number }) {
     const params = {
       pageNum: page?.current ?? pagination.current,
       pageSize: page?.pageSize ?? pagination.pageSize,
+      deptId: query.deptId,
+      status: query.status,
+      keyword: query.keyword.trim() || undefined,
     };
     const result = await getEmployees(params);
     list.value = result.records;
@@ -312,7 +323,11 @@ async function handleProbationRemind() {
 async function handleExport() {
   exportLoading.value = true;
   try {
-    const blob = await exportEmployeesExcel();
+    const blob = await exportEmployeesExcel({
+      deptId: query.deptId,
+      status: query.status,
+      keyword: query.keyword.trim() || undefined,
+    });
     downloadFileFromBlob({ fileName: '员工花名册.xlsx', source: blob });
     message.success('导出成功');
   } catch {
@@ -330,10 +345,40 @@ onMounted(async () => {
 
 <template>
   <Page description="员工档案维护" title="员工管理">
-    <div class="mb-4 flex flex-wrap gap-2">
-      <Button v-if="canManage" type="primary" @click="openCreate">
-        新增员工
+    <div class="mb-4 flex flex-wrap items-center gap-3">
+      <Select
+        v-model:value="query.deptId"
+        allow-clear
+        :options="deptOptions"
+        :popup-match-select-width="false"
+        class="w-52"
+        option-filter-prop="label"
+        placeholder="选择部门"
+        popup-class-name="hr-filter-select-dropdown"
+        show-search
+      />
+      <Select
+        v-model:value="query.status"
+        allow-clear
+        :options="statusOptions"
+        class="w-36 shrink-0"
+        placeholder="在职状态"
+        popup-class-name="hr-filter-select-dropdown"
+      />
+      <Input
+        v-model:value="query.keyword"
+        allow-clear
+        class="!w-44 shrink-0"
+        placeholder="姓名/工号/手机号"
+        @press-enter="loadData({ current: 1, pageSize: pagination.pageSize })"
+      />
+      <Button
+        type="primary"
+        @click="loadData({ current: 1, pageSize: pagination.pageSize })"
+      >
+        查询
       </Button>
+      <Button v-if="canManage" @click="openCreate">新增员工</Button>
       <Button v-if="canExport" :loading="exportLoading" @click="handleExport">
         导出 Excel
       </Button>

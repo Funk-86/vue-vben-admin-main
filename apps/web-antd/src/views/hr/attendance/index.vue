@@ -260,7 +260,7 @@ onMounted(async () => {
           <Button type="primary" ghost @click="openFacePunch('check-in')">
             人脸上班打卡
           </Button>
-          <Button ghost @click="openFacePunch('check-out')">
+          <Button type="default" @click="openFacePunch('check-out')">
             人脸下班打卡
           </Button>
           <Button :loading="exportLoading" @click="handleExport">

@@ -58,6 +58,15 @@ const activeTab = ref('list');
 const deductRules = ref<AttendanceDeductRuleVO[]>([]);
 const loadingRules = ref(false);
 
+const showPayReminder = computed(() => {
+  if (!canManageSalary.value) return false;
+  return dayjs().date() === 5;
+});
+
+const lastSalaryMonth = computed(() =>
+  dayjs().subtract(1, 'month').format('YYYY-MM'),
+);
+
 const formState = reactive({
   baseSalary: 0,
   bonus: 0,
@@ -275,6 +284,13 @@ onMounted(async () => {
     description="员工月薪生成与发放（底薪、任务奖金与考勤扣款由系统带出）"
     title="薪资管理"
   >
+    <Alert
+      v-if="showPayReminder"
+      class="mb-4"
+      show-icon
+      type="warning"
+      :message="`今天是本月 5 号，请尽快完成 ${lastSalaryMonth} 月工资发放`"
+    />
     <Tabs v-model:active-key="activeTab">
       <Tabs.TabPane key="list" tab="薪资列表">
         <div v-if="canManageSalary" class="mb-4">

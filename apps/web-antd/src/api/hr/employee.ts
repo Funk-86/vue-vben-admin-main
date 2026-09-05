@@ -1,9 +1,22 @@
-import type { EmployeeCreateParams, EmployeeUpdateParams, EmployeeVO, PageQuery, PageResult } from './types';
-import { MAX_PAGE_SIZE } from './types';
+import type {
+  EmployeeCreateParams,
+  EmployeeUpdateParams,
+  EmployeeVO,
+  PageQuery,
+  PageResult,
+} from './types';
 
 import { requestClient } from '#/api/request';
 
-export async function getEmployees(params?: PageQuery) {
+import { MAX_PAGE_SIZE } from './types';
+
+export async function getEmployees(
+  params?: PageQuery & {
+    deptId?: number;
+    keyword?: string;
+    status?: number;
+  },
+) {
   return requestClient.get<PageResult<EmployeeVO>>('/employees', { params });
 }
 
@@ -47,9 +60,15 @@ export async function uploadEmployeeAvatar(id: number, file: File) {
 
 /** 立即执行试用期到期提醒（HR/超管） */
 export async function runProbationRemind() {
-  return requestClient.post<{ sent: number }>('/employees/probation-remind/run');
+  return requestClient.post<{ sent: number }>(
+    '/employees/probation-remind/run',
+  );
 }
 
-export async function exportEmployeesExcel() {
-  return requestClient.download<Blob>('/employees/export');
+export async function exportEmployeesExcel(params?: {
+  deptId?: number;
+  keyword?: string;
+  status?: number;
+}) {
+  return requestClient.download<Blob>('/employees/export', { params });
 }

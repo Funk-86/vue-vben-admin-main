@@ -361,10 +361,11 @@ onMounted(async () => {
       v-model:open="modalOpen"
       :title="editingId ? '编辑考核' : '新建考核'"
       :footer="null"
-      width="560"
+      centered
+      width="480px"
       destroy-on-close
     >
-      <Form layout="vertical" class="mt-4">
+      <Form layout="vertical" class="mx-auto mt-2 max-w-md">
         <Form.Item label="员工" required>
           <Select
             v-model:value="form.employeeId"

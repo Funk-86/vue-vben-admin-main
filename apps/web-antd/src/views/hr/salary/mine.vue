@@ -4,22 +4,29 @@ import type { SalaryVO } from '#/api/hr';
 import { onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
+import { downloadFileFromBlob } from '@vben/utils';
 
 import {
   Button,
   DatePicker,
   Descriptions,
   Drawer,
+  message,
   Space,
   Table,
   Tag,
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
-import { getMySalaryById, getMySalaryList } from '#/api/hr';
+import {
+  exportMySalaryExcel,
+  getMySalaryById,
+  getMySalaryList,
+} from '#/api/hr';
 import { SALARY_STATUS_MAP } from '#/views/hr/constants';
 
 const loading = ref(false);
+const exportLoading = ref(false);
 const list = ref<SalaryVO[]>([]);
 const detailOpen = ref(false);
 const detail = ref<null | SalaryVO>(null);
@@ -56,6 +63,24 @@ async function loadData(page?: { current: number; pageSize: number }) {
   }
 }
 
+async function handleExport() {
+  exportLoading.value = true;
+  try {
+    const blob = await exportMySalaryExcel({
+      salaryMonth: filterMonth.value
+        ? filterMonth.value.format('YYYY-MM')
+        : undefined,
+    });
+    downloadFileFromBlob({
+      fileName: `我的薪资条${filterMonth.value ? `_${filterMonth.value.format('YYYY-MM')}` : ''}.xlsx`,
+      source: blob,
+    });
+    message.success('导出成功');
+  } finally {
+    exportLoading.value = false;
+  }
+}
+
 async function openDetail(record: SalaryVO) {
   detail.value = await getMySalaryById(record.id);
   detailOpen.value = true;
@@ -75,6 +100,9 @@ onMounted(() => loadData());
           placeholder="按月份筛选"
         />
         <Button type="primary" @click="loadData()">查询</Button>
+        <Button :loading="exportLoading" @click="handleExport">
+          导出 Excel
+        </Button>
       </Space>
     </div>
 

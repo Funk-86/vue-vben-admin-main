@@ -27,7 +27,7 @@ import {
 } from '#/api/hr';
 import {
   COMMON_STATUS,
-  flattenDepartments,
+  flattenDepartmentOptions,
   POSITION_LEVEL_MAP,
 } from '#/views/hr/constants';
 import { useHrAccess } from '#/views/hr/roles';
@@ -52,12 +52,7 @@ const formState = reactive({
   status: 1,
 });
 
-const deptOptions = computed(() =>
-  flattenDepartments(deptTree.value).map((d) => ({
-    label: d.deptName,
-    value: d.id,
-  })),
-);
+const deptOptions = computed(() => flattenDepartmentOptions(deptTree.value));
 
 const columns = [
   { dataIndex: 'positionName', key: 'positionName', title: '岗位名称' },
@@ -152,7 +147,10 @@ onMounted(async () => {
 </script>
 
 <template>
-  <Page description="按部门维护岗位信息" title="岗位管理">
+  <Page
+    description="按部门维护岗位信息；选择公司（根部门）可查看全公司岗位"
+    title="岗位管理"
+  >
     <div class="mb-4 flex items-center gap-3">
       <span>选择部门：</span>
       <Select
@@ -161,7 +159,7 @@ onMounted(async () => {
         :popup-match-select-width="false"
         class="w-60"
         option-filter-prop="label"
-        placeholder="请选择部门"
+        placeholder="请选择部门/公司"
         popup-class-name="hr-filter-select-dropdown"
         show-search
       />

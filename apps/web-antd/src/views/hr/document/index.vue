@@ -454,7 +454,26 @@ onMounted(async () => {
       @change="handleTableChange"
     >
       <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'expireDate'">
+        <template v-if="column.key === 'fileName'">
+          <Tag
+            v-if="isWord(record as any)"
+            :bordered="false"
+            class="max-w-full truncate"
+            color="processing"
+          >
+            {{ record.fileName }}
+          </Tag>
+          <Tag
+            v-else-if="isPdf(record as any)"
+            :bordered="false"
+            class="max-w-full truncate"
+            color="error"
+          >
+            {{ record.fileName }}
+          </Tag>
+          <span v-else>{{ record.fileName }}</span>
+        </template>
+        <template v-else-if="column.key === 'expireDate'">
           <span>{{ record.expireDate || '-' }}</span>
           <Tag v-if="record.expiringSoon" color="orange" class="ml-1">
             即将到期

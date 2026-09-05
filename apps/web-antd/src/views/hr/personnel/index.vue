@@ -327,8 +327,9 @@ onMounted(async () => {
     <Modal
       v-model:open="createOpen"
       title="发起异动申请"
+      :width="480"
+      destroy-on-close
       @ok="submitCreate"
-      width="560"
     >
       <Form layout="vertical" class="mt-4">
         <Form.Item label="类型" required>
