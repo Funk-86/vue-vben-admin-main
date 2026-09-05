@@ -3,15 +3,23 @@ import type { PageQuery, PageResult } from './types';
 import { requestClient } from '#/api/request';
 
 export interface TaskVO {
+  claimMode?: string;
+  claimQuota?: number;
+  claimedCount?: number;
   content?: string;
   creatorId?: number;
   creatorName?: string;
+  deductAmount?: number;
+  deptId?: number;
+  deptName?: string;
+  difficulty?: number;
   dueTime?: string;
   hasChildren?: boolean;
   id: number;
   myProgress?: number;
   myStatus?: number;
   overdue?: boolean;
+  overduePolicy?: string;
   parentId?: number;
   priority?: number;
   /** 任务整体进度（有子任务时为子任务均值）0-100 */
@@ -19,6 +27,7 @@ export interface TaskVO {
   projectId?: number;
   startTime?: string;
   status?: number;
+  suggestBonus?: number;
   title: string;
 }
 
@@ -79,8 +88,50 @@ export interface TaskBoardVO {
   pending: TaskVO[];
 }
 
-export async function getTasks(params?: PageQuery & { scope?: string; status?: number }) {
+export async function getTasks(
+  params?: PageQuery & { scope?: string; status?: number },
+) {
   return requestClient.get<PageResult<TaskVO>>('/tasks', { params });
+}
+
+export interface TaskHallClaimResultVO {
+  claimQuota: number;
+  claimedCount: number;
+  taskId: number;
+  taskStatus: number;
+}
+
+export async function getTaskHall(params?: PageQuery) {
+  return requestClient.get<PageResult<TaskVO>>('/tasks/hall', { params });
+}
+
+export async function publishHallTask(data: {
+  claimQuota: number;
+  content?: string;
+  deductAmount?: number;
+  deptId?: number;
+  difficulty: number;
+  dueTime?: string;
+  overduePolicy: string;
+  suggestBonus?: number;
+  title: string;
+}) {
+  return requestClient.post('/tasks/hall', data);
+}
+
+export async function claimHallTask(id: number) {
+  return requestClient.post<TaskHallClaimResultVO>(`/tasks/${id}/claim`);
+}
+
+export async function abandonHallTask(id: number, data: { reason: string }) {
+  return requestClient.post(`/tasks/${id}/abandon`, data);
+}
+
+export async function reclaimHallTask(
+  id: number,
+  data: { action?: string; employeeId?: number; reason: string },
+) {
+  return requestClient.post(`/tasks/${id}/reclaim`, data);
 }
 
 export async function getTaskDetail(id: number) {
@@ -160,11 +211,17 @@ export async function getTaskAttachments(taskId: number) {
 }
 
 export async function uploadTaskAttachment(taskId: number, file: File) {
-  return requestClient.upload<TaskAttachmentVO>(`/tasks/${taskId}/attachments`, {
-    file,
-  });
+  return requestClient.upload<TaskAttachmentVO>(
+    `/tasks/${taskId}/attachments`,
+    {
+      file,
+    },
+  );
 }
 
-export async function deleteTaskAttachment(taskId: number, attachmentId: number) {
+export async function deleteTaskAttachment(
+  taskId: number,
+  attachmentId: number,
+) {
   return requestClient.delete(`/tasks/${taskId}/attachments/${attachmentId}`);
 }

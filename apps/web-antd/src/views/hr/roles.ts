@@ -66,6 +66,8 @@ const FEAT_ROLE_FALLBACK: Record<string, HrRoleCode[]> = {
   'feat.stats.view': ROLE_HR_STAFF,
   'feat.task.create': ROLE_MANAGER_UP,
   'feat.task.execute': ROLE_ALL,
+  'feat.task.hall.claim': [HR_ROLE.EMPLOYEE],
+  'feat.task.hall.publish': [HR_ROLE.HR_ADMIN, HR_ROLE.DEPT_MANAGER],
 };
 
 /** 判断当前用户是否拥有任一允许角色 */

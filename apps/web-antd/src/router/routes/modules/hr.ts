@@ -118,6 +118,16 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        name: 'HrTaskHall',
+        path: '/hr/task-hall',
+        component: () => import('#/views/hr/task-hall/index.vue'),
+        meta: {
+          authority: ROLE_ALL,
+          icon: 'lucide:store',
+          title: '任务大厅',
+        },
+      },
+      {
         name: 'HrTask',
         path: '/hr/task',
         component: () => import('#/views/hr/task/index.vue'),
