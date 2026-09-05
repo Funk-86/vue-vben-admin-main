@@ -11,7 +11,10 @@ export interface OperationLogVO {
   method?: string;
   module?: string;
   operation?: string;
+  /** 短摘要；详情中 requestInfo 为空时可作为回退 */
   params?: string;
+  requestInfo?: string;
+  responseInfo?: string;
   status?: number;
   userId?: number;
   username?: string;
@@ -29,4 +32,8 @@ export async function getOperationLogs(
   return requestClient.get<PageResult<OperationLogVO>>('/operation-logs', {
     params,
   });
+}
+
+export async function getOperationLogDetail(id: number) {
+  return requestClient.get<OperationLogVO>(`/operation-logs/${id}`);
 }

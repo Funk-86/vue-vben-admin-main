@@ -1,15 +1,18 @@
 <script lang="ts" setup>
 import type { OperationLogVO } from '#/api/hr';
 
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
 import {
   Button,
   DatePicker,
+  Descriptions,
+  Drawer,
   Form,
   Input,
+  message,
   Select,
   Space,
   Table,
@@ -17,9 +20,10 @@ import {
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
-import { getOperationLogs } from '#/api/hr';
+import { getOperationLogDetail, getOperationLogs } from '#/api/hr';
 
 const loading = ref(false);
+const detailLoading = ref(false);
 const list = ref<OperationLogVO[]>([]);
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 
@@ -28,6 +32,9 @@ const query = reactive({
   range: undefined as [dayjs.Dayjs, dayjs.Dayjs] | undefined,
   status: undefined as number | undefined,
 });
+
+const detailOpen = ref(false);
+const detail = ref<null | OperationLogVO>(null);
 
 const columns = [
   { dataIndex: 'createdAt', key: 'createdAt', title: '时间', width: 170 },
@@ -38,7 +45,26 @@ const columns = [
   { dataIndex: 'status', key: 'status', title: '结果', width: 90 },
   { dataIndex: 'duration', key: 'duration', title: '耗时(ms)', width: 100 },
   { dataIndex: 'ip', key: 'ip', title: 'IP', width: 130 },
+  { key: 'action', title: '操作', width: 90, fixed: 'right' as const },
 ];
+
+const requestDisplay = computed(() =>
+  formatPayload(detail.value?.requestInfo || detail.value?.params),
+);
+const responseDisplay = computed(() =>
+  formatPayload(detail.value?.responseInfo),
+);
+
+function formatPayload(raw?: null | string) {
+  if (!raw || !raw.trim()) {
+    return '';
+  }
+  try {
+    return JSON.stringify(JSON.parse(raw), null, 2);
+  } catch {
+    return raw;
+  }
+}
 
 async function loadData(page?: { current: number; pageSize: number }) {
   if (page) {
@@ -82,13 +108,42 @@ function handleTableChange(pag: { current?: number; pageSize?: number }) {
   });
 }
 
+async function openDetail(record: OperationLogVO) {
+  detailOpen.value = true;
+  detail.value = null;
+  detailLoading.value = true;
+  try {
+    detail.value = await getOperationLogDetail(record.id);
+  } catch {
+    detailOpen.value = false;
+  } finally {
+    detailLoading.value = false;
+  }
+}
+
+async function copyText(text: string, label: string) {
+  if (!text) {
+    message.warning(`${label}为空`);
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    message.success(`${label}已复制`);
+  } catch {
+    message.error('复制失败');
+  }
+}
+
 onMounted(() => {
   void loadData();
 });
 </script>
 
 <template>
-  <Page description="系统操作审计日志（落库查询）" title="操作日志">
+  <Page
+    description="系统操作审计日志（可查看 Request / Response）"
+    title="操作日志"
+  >
     <Form layout="inline" class="mb-4 flex flex-wrap gap-2">
       <Form.Item label="模块">
         <Input
@@ -131,7 +186,7 @@ onMounted(() => {
         total: pagination.total,
         showSizeChanger: true,
       }"
-      :scroll="{ x: 1100 }"
+      :scroll="{ x: 1200 }"
       row-key="id"
       @change="handleTableChange"
     >
@@ -144,7 +199,88 @@ onMounted(() => {
         <template v-else-if="column.key === 'username'">
           {{ record.username || record.userId || '-' }}
         </template>
+        <template v-else-if="column.key === 'action'">
+          <Button
+            type="link"
+            size="small"
+            @click="openDetail(record as OperationLogVO)"
+          >
+            详情
+          </Button>
+        </template>
       </template>
     </Table>
+
+    <Drawer
+      v-model:open="detailOpen"
+      title="操作日志详情"
+      :width="680"
+      destroy-on-close
+    >
+      <div v-if="detailLoading" class="py-8 text-center text-gray-400">
+        加载中...
+      </div>
+      <template v-else-if="detail">
+        <Descriptions :column="1" bordered size="small" class="mb-4">
+          <Descriptions.Item label="时间">
+            {{ detail.createdAt || '-' }}
+          </Descriptions.Item>
+          <Descriptions.Item label="操作人">
+            {{ detail.username || detail.userId || '-' }}
+          </Descriptions.Item>
+          <Descriptions.Item label="模块">
+            {{ detail.module || '-' }}
+          </Descriptions.Item>
+          <Descriptions.Item label="操作">
+            {{ detail.operation || '-' }}
+          </Descriptions.Item>
+          <Descriptions.Item label="请求">
+            {{ detail.method || '-' }}
+          </Descriptions.Item>
+          <Descriptions.Item label="IP">
+            {{ detail.ip || '-' }}
+          </Descriptions.Item>
+          <Descriptions.Item label="结果">
+            <Tag :color="detail.status === 1 ? 'success' : 'error'">
+              {{ detail.status === 1 ? '成功' : '失败' }}
+            </Tag>
+          </Descriptions.Item>
+          <Descriptions.Item label="耗时">
+            {{ detail.duration != null ? `${detail.duration} ms` : '-' }}
+          </Descriptions.Item>
+          <Descriptions.Item v-if="detail.errorMsg" label="错误">
+            <span class="text-red-500">{{ detail.errorMsg }}</span>
+          </Descriptions.Item>
+        </Descriptions>
+
+        <div class="mb-2 flex items-center justify-between">
+          <div class="font-medium">Request</div>
+          <Button
+            size="small"
+            type="link"
+            @click="copyText(requestDisplay, 'Request')"
+          >
+            复制
+          </Button>
+        </div>
+        <pre
+          class="mb-4 max-h-64 overflow-auto rounded border border-gray-200 bg-gray-50 p-3 text-xs leading-5"
+          >{{ requestDisplay || '无请求记录（升级前日志）' }}</pre>
+
+        <div class="mb-2 flex items-center justify-between">
+          <div class="font-medium">Response</div>
+          <Button
+            size="small"
+            type="link"
+            @click="copyText(responseDisplay, 'Response')"
+          >
+            复制
+          </Button>
+        </div>
+        <pre
+          class="max-h-64 overflow-auto rounded border border-gray-200 bg-gray-50 p-3 text-xs leading-5"
+          >{{ responseDisplay || '无响应记录（升级前日志）' }}</pre>
+      </template>
+    </Drawer>
   </Page>
 </template>
