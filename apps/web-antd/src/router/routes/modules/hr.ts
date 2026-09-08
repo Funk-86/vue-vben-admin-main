@@ -65,6 +65,16 @@ const routes: RouteRecordRaw[] = [
           title: '文档管理',
         },
       },
+      {
+        name: 'HrContractExpire',
+        path: '/hr/contract-expire',
+        component: () => import('#/views/hr/contract-expire/index.vue'),
+        meta: {
+          authority: ROLE_HR_STAFF,
+          icon: 'lucide:calendar-x',
+          title: '合同到期',
+        },
+      },
     ],
   },
   {

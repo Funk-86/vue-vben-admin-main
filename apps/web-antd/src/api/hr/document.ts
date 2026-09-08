@@ -73,3 +73,43 @@ export async function fetchEmployeeDocumentFile(
     params: { disposition },
   });
 }
+
+export interface ContractExpireVO {
+  daysLeft?: number;
+  deptId?: number;
+  deptName?: string;
+  documentId: number;
+  employeeId: number;
+  employeeName?: string;
+  empNo?: string;
+  expireDate?: string;
+  remark?: string;
+  title?: string;
+}
+
+export async function getContractExpireList(
+  params?: PageQuery & {
+    deptId?: number;
+    keyword?: string;
+    status?: 'ALL' | 'EXPIRED' | 'EXPIRING';
+    withinDays?: number;
+  },
+) {
+  return requestClient.get<PageResult<ContractExpireVO>>(
+    '/documents/contract-expire',
+    { params },
+  );
+}
+
+export async function runContractExpireRemind() {
+  return requestClient.post<{ sent: number }>(
+    '/documents/contract-expire/remind',
+  );
+}
+
+export async function extendDocumentExpire(
+  id: number,
+  data: { expireDate: string; remark?: string },
+) {
+  return requestClient.put(`/documents/${id}/extend-expire`, data);
+}

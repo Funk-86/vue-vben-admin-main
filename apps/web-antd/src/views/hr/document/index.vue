@@ -14,6 +14,7 @@ import {
   ref,
   watch,
 } from 'vue';
+import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 
@@ -49,7 +50,8 @@ import { useHrAccess } from '#/views/hr/roles';
 
 import '#/views/hr/hr-common.css';
 
-const { canFeat } = useHrAccess();
+const router = useRouter();
+const { canFeat, canPage } = useHrAccess();
 const canUpload = computed(() => canFeat('feat.document.self'));
 const canFilterOrg = computed(() => canFeat('feat.employee.manage'));
 
@@ -440,6 +442,12 @@ onMounted(async () => {
           <Button v-if="canUpload" type="primary" @click="openUpload">
             上传文档
           </Button>
+          <Button
+            v-if="canPage('/hr/contract-expire')"
+            @click="router.push('/hr/contract-expire')"
+          >
+            合同到期工作台
+          </Button>
         </Space>
       </Form.Item>
     </Form>
@@ -448,7 +456,13 @@ onMounted(async () => {
       :columns="columns"
       :data-source="list"
       :loading="loading"
-      :pagination="pagination"
+      :pagination="{
+        current: pagination.current,
+        pageSize: pagination.pageSize,
+        total: pagination.total,
+        showSizeChanger: true,
+        showTotal: (total: number) => `共 ${total} 条`,
+      }"
       :scroll="{ x: 1300 }"
       row-key="id"
       @change="handleTableChange"
