@@ -206,6 +206,13 @@ export async function runTaskOverdueRemind() {
   return requestClient.post<{ sent: number }>('/tasks/overdue-remind/run');
 }
 
+/** 手动触发长期逾期未完成自动关闭（HR/超管演示补跑） */
+export async function runOverdueAutoClose() {
+  return requestClient.post<{ closed: number }>(
+    '/tasks/overdue-auto-close/run',
+  );
+}
+
 export async function getTaskAttachments(taskId: number) {
   return requestClient.get<TaskAttachmentVO[]>(`/tasks/${taskId}/attachments`);
 }

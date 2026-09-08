@@ -51,7 +51,9 @@ import {
   getTaskBoard,
   getTaskDetail,
   getTasks,
+  reclaimHallTask,
   rejectTask,
+  runOverdueAutoClose,
   runTaskOverdueRemind,
   scoreTaskAssignee,
   updateTaskProgress,
@@ -309,6 +311,17 @@ async function onRunOverdueRemind() {
   try {
     const result = await runTaskOverdueRemind();
     message.success(`逾期提醒已执行，新发送 ${result?.sent ?? 0} 条`);
+  } finally {
+    remindLoading.value = false;
+  }
+}
+
+async function onRunOverdueAutoClose() {
+  remindLoading.value = true;
+  try {
+    const result = await runOverdueAutoClose();
+    message.success(`长期逾期自动关闭已执行，关闭 ${result?.closed ?? 0} 条`);
+    await refreshView();
   } finally {
     remindLoading.value = false;
   }
@@ -574,9 +587,52 @@ async function submitReject() {
 }
 
 async function onClose(id: number) {
-  await closeTask(id);
-  message.success('已关闭');
-  await refreshView();
+  Modal.confirm({
+    title: '未完成关闭',
+    content:
+      '确认按未完成关闭？未完成执行人将被关闭；大厅任务将按发布时的逾期策略处理（仅标记 / 奖金清零 / 扣款）。',
+    okText: '确认关闭',
+    okType: 'danger',
+    async onOk() {
+      await closeTask(id);
+      message.success('已按未完成关闭');
+      await refreshView();
+    },
+  });
+}
+
+async function onReclaimToHall(id: number) {
+  Modal.confirm({
+    title: '收回回大厅',
+    content: '将清空当前认领并重新开放接取，确认继续？',
+    okText: '确认收回',
+    async onOk() {
+      await reclaimHallTask(id, {
+        action: 'BACK_TO_HALL',
+        reason: '创建人收回回大厅',
+      });
+      message.success('已收回回大厅');
+      await refreshView();
+    },
+  });
+}
+
+async function onIncompleteCloseHall(id: number) {
+  Modal.confirm({
+    title: '未完成关闭（大厅）',
+    content:
+      '强制结束该大厅任务并应用逾期策略。推荐流程：先催办/升级，仍无法完成再关闭。',
+    okText: '未完成关闭',
+    okType: 'danger',
+    async onOk() {
+      await reclaimHallTask(id, {
+        action: 'CLOSE',
+        reason: '创建人未完成关闭',
+      });
+      message.success('已未完成关闭');
+      await refreshView();
+    },
+  });
 }
 
 async function onUrge(id: number) {
@@ -616,7 +672,7 @@ watch(
 <template>
   <Page
     auto-content-height
-    description="上级下发任务，下级接收并更新进度"
+    description="催办升级 → 收回/改派 → 未完成关闭；逾期满14天自动关单"
     title="任务管理"
   >
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -643,6 +699,13 @@ watch(
           @click="onRunOverdueRemind"
         >
           逾期提醒补跑
+        </Button>
+        <Button
+          v-if="canOverdueRemind"
+          :loading="remindLoading"
+          @click="onRunOverdueAutoClose"
+        >
+          长期逾期关单补跑
         </Button>
         <Button v-if="canCreate" type="primary" @click="() => openCreate()">
           新建任务
@@ -805,6 +868,34 @@ watch(
               v-if="
                 canCreate &&
                 scope === 'created' &&
+                record.claimMode === 'OPEN' &&
+                (record.status === 0 || record.status === 1)
+              "
+              size="small"
+              type="link"
+              @click="onReclaimToHall(record.id)"
+            >
+              收回回大厅
+            </Button>
+            <Button
+              v-if="
+                canCreate &&
+                scope === 'created' &&
+                record.claimMode === 'OPEN' &&
+                (record.status === 0 || record.status === 1)
+              "
+              danger
+              size="small"
+              type="link"
+              @click="onIncompleteCloseHall(record.id)"
+            >
+              未完成关闭
+            </Button>
+            <Button
+              v-if="
+                canCreate &&
+                scope === 'created' &&
+                record.claimMode !== 'OPEN' &&
                 (record.status === 0 || record.status === 1)
               "
               danger
@@ -812,7 +903,7 @@ watch(
               type="link"
               @click="onClose(record.id)"
             >
-              关闭
+              未完成关闭
             </Button>
           </Space>
         </template>

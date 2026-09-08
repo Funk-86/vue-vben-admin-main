@@ -60,9 +60,9 @@ const detail = ref<null | TaskDetailVO>(null);
 const departmentOptions = ref<{ label: string; value: number }[]>([]);
 
 const POLICY_OPTIONS = [
-  { label: '仅标记逾期', value: 'MARK_ONLY' },
-  { label: '未完成奖金清零', value: 'ZERO_BONUS' },
-  { label: '未完成扣款', value: 'DEDUCT' },
+  { label: '仅关单标记（不挂钩薪资）', value: 'MARK_ONLY' },
+  { label: '未完成奖金清零（推荐）', value: 'ZERO_BONUS' },
+  { label: '未完成定额扣款（慎用）', value: 'DEDUCT' },
 ];
 
 const POLICY_LABEL: Record<string, string> = {
@@ -79,7 +79,7 @@ const publishForm = reactive({
   deptId: undefined as number | undefined,
   difficulty: 3,
   dueTime: undefined as dayjs.Dayjs | undefined,
-  overduePolicy: 'MARK_ONLY',
+  overduePolicy: 'ZERO_BONUS',
   suggestBonus: undefined as number | undefined,
   title: '',
 });
