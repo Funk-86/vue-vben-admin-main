@@ -12,6 +12,8 @@ import { BasicLayout, Notification, UserDropdown } from '@vben/layouts';
 import { preferences, usePreferences } from '@vben/preferences';
 import { useAccessStore, useUserStore } from '@vben/stores';
 
+import { Button, Modal } from 'ant-design-vue';
+
 import {
   buildNotificationStreamUrl,
   createStreamTicket,
@@ -37,6 +39,9 @@ const pollTimer = ref<null | ReturnType<typeof setInterval>>(null);
 const eventSource = ref<EventSource | null>(null);
 const sseReconnectTimer = ref<null | ReturnType<typeof setTimeout>>(null);
 const sseRetryMs = ref(SSE_RECONNECT_BASE_MS);
+
+const detailOpen = ref(false);
+const detailItem = ref<NotificationItem | null>(null);
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -307,10 +312,17 @@ const handleClick = (item: NotificationItem) => {
   if (item.id !== null && item.id !== undefined) {
     void markRead(item.id);
   }
-  if (item.link) {
+  detailItem.value = item;
+  detailOpen.value = true;
+};
+
+function goDetailLink() {
+  const item = detailItem.value;
+  detailOpen.value = false;
+  if (item?.link) {
     navigateTo(item.link, item.query, item.state);
   }
-};
+}
 
 function navigateTo(
   link: string,
@@ -445,5 +457,25 @@ onUnmounted(() => {
       <AppLockScreen :avatar @to-login="handleLogout" />
     </template>
   </BasicLayout>
+  <Modal
+    v-model:open="detailOpen"
+    :footer="null"
+    :title="detailItem?.title || '通知详情'"
+    destroy-on-close
+    width="520px"
+  >
+    <div class="space-y-3 text-sm">
+      <p class="whitespace-pre-wrap break-words leading-6 text-foreground">
+        {{ detailItem?.message || '暂无内容' }}
+      </p>
+      <p class="text-xs text-muted-foreground">{{ detailItem?.date }}</p>
+      <div class="flex justify-end gap-2 pt-2">
+        <Button @click="detailOpen = false">关闭</Button>
+        <Button v-if="detailItem?.link" type="primary" @click="goDetailLink">
+          前往相关页面
+        </Button>
+      </div>
+    </div>
+  </Modal>
   <AiAssistant v-if="accessStore.accessToken" />
 </template>

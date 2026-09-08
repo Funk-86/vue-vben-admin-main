@@ -94,15 +94,10 @@ const handleClear = () => {
         <ul class="flex! max-h-90 w-full flex-col">
           <template v-for="item in notifications" :key="item.id ?? item.title">
             <li
-              class="relative flex w-full cursor-pointer items-start gap-5 border-t border-border p-3 hover:bg-accent"
+              class="flex w-full cursor-pointer items-start gap-3 border-t border-border p-3 hover:bg-accent"
               @click="emit('onClick', item)"
             >
               <slot name="content" :item="item">
-                <span
-                  v-if="!item.isRead"
-                  class="absolute top-2 right-2 size-2 rounded-sm bg-primary"
-                ></span>
-
                 <span
                   class="relative flex size-10 shrink-0 overflow-hidden rounded-full"
                 >
@@ -111,17 +106,26 @@ const handleClear = () => {
                     class="aspect-square size-full object-cover"
                   />
                 </span>
-                <div class="flex flex-col gap-1 leading-none">
-                  <p class="font-semibold">{{ item.title }}</p>
-                  <p class="my-1 line-clamp-2 text-xs text-muted-foreground">
+                <div class="min-w-0 flex-1 flex flex-col gap-1 leading-none">
+                  <p class="flex items-center gap-2 font-semibold">
+                    <span
+                      v-if="!item.isRead"
+                      class="size-2 shrink-0 rounded-sm bg-primary"
+                    ></span>
+                    <span class="truncate">{{ item.title }}</span>
+                  </p>
+                  <p
+                    class="my-1 line-clamp-2 break-words text-xs text-muted-foreground"
+                    :title="item.message"
+                  >
                     {{ item.message }}
                   </p>
-                  <p class="line-clamp-2 text-xs text-muted-foreground">
+                  <p class="text-xs text-muted-foreground">
                     {{ item.date }}
                   </p>
                 </div>
                 <div
-                  class="absolute top-1/2 right-3 flex -translate-y-1/2 flex-row gap-1"
+                  class="flex shrink-0 flex-col items-center gap-1 self-center"
                 >
                   <slot name="action" :item="item">
                     <slot name="action-prepend" :item="item"></slot>
