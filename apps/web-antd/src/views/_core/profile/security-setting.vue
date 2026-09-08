@@ -31,16 +31,16 @@ const formSchema = computed(() => {
     {
       fieldName: 'accountPassword',
       label: '账户密码',
-      description: s?.passwordStrength || '已设置登录密码',
+      description: s?.passwordStrength || '已设置登录密码（至少 6 位）',
       value: true,
     },
     {
-      fieldName: 'phoneSecured',
-      label: '密保手机',
-      description: s?.hasPhone
-        ? `已绑定手机：${s.maskedPhone}`
-        : '未绑定手机，请先在「基本设置」中填写',
-      value: !!s?.phoneSecured,
+      fieldName: 'emailSecured',
+      label: '密保邮箱',
+      description: s?.hasEmail
+        ? `已绑定邮箱：${s.maskedEmail}（可用于忘记密码验证）`
+        : '未绑定邮箱，请先在「基本设置」中填写，用于忘记密码验证',
+      value: !!s?.emailSecured,
     },
     {
       fieldName: 'securityQuestion',
@@ -49,14 +49,6 @@ const formSchema = computed(() => {
         ? `已设置：${s.securityQuestion}`
         : '未设置密保问题，密保问题可有效保护账户安全',
       value: !!s?.securityQuestionEnabled,
-    },
-    {
-      fieldName: 'emailSecured',
-      label: '备用邮箱',
-      description: s?.hasEmail
-        ? `已绑定邮箱：${s.maskedEmail}`
-        : '未绑定邮箱，请先在「基本设置」中填写',
-      value: !!s?.emailSecured,
     },
     {
       fieldName: 'mfa',

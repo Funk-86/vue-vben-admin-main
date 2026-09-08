@@ -4,5 +4,9 @@
   "loginSubtitle": "请选择登录角色并输入账号，进入人事工作台",
   "welcomeBack": "欢迎回来",
   "loginSuccess": "登录成功",
-  "loginSuccessDesc": "欢迎使用智汇人事"
+  "loginSuccessDesc": "欢迎使用智汇人事",
+  "passwordStrength": "使用 6 个或更多字符",
+  "forgetPasswordSubtitle": "输入绑定邮箱，获取验证码后重置密码",
+  "sendResetLink": "重置密码",
+  "mobileLogin": "邮箱登录"
 }

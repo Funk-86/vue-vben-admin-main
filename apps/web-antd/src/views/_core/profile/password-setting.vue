@@ -26,9 +26,11 @@ const formSchema = computed((): VbenFormSchema[] => {
       component: 'VbenInputPassword',
       componentProps: {
         passwordStrength: true,
-        placeholder: '请输入新密码',
+        placeholder: '至少 6 位',
       },
-      rules: 'required',
+      rules: z
+        .string({ required_error: '请输入新密码' })
+        .min(6, { message: '密码至少 6 位' }),
     },
     {
       fieldName: 'confirmPassword',
@@ -43,7 +45,7 @@ const formSchema = computed((): VbenFormSchema[] => {
           const { newPassword } = values;
           return z
             .string({ required_error: '请再次输入新密码' })
-            .min(1, { message: '请再次输入新密码' })
+            .min(6, { message: '密码至少 6 位' })
             .refine((value) => value === newPassword, {
               message: '两次输入的密码不一致',
             });

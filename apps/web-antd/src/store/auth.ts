@@ -37,10 +37,11 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       loginLoading.value = true;
       const loginResult = await loginApi({
+        email: params.email || undefined,
         mfaCode: params.mfaCode || undefined,
         password: params.password,
         roleCode: params.roleCode,
-        username: params.username,
+        username: params.username || undefined,
       });
 
       if (loginResult?.token) {

@@ -2,12 +2,15 @@ import { requestClient } from '#/api/request';
 
 export namespace AuthApi {
   export interface LoginParams {
+    /** 邮箱登录（与 username 二选一） */
+    email?: string;
     /** 若已开启 MFA，填写 Authenticator 动态码 */
     mfaCode?: string;
     password: string;
     /** 登录角色编码，与后端 sys_role.role_code 一致 */
     roleCode: string;
-    username: string;
+    /** 用户名登录（与 email 二选一） */
+    username?: string;
   }
 
   export interface MenuVO {
@@ -96,4 +99,17 @@ export async function verifyPasswordApi(password: string) {
 /** 后端未提供 refresh 接口，占位避免编译错误 */
 export async function refreshTokenApi() {
   throw new Error('不支持刷新 Token');
+}
+
+export async function sendForgotPasswordCodeApi(email: string) {
+  return requestClient.post('/auth/forgot-password/send-code', { email });
+}
+
+export async function resetForgotPasswordApi(data: {
+  code: string;
+  confirmPassword: string;
+  email: string;
+  newPassword: string;
+}) {
+  return requestClient.post('/auth/forgot-password/reset', data);
 }

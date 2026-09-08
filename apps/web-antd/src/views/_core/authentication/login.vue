@@ -5,6 +5,7 @@ import type { BasicOption, Recordable } from '@vben/types';
 import type { SavedAccount } from '#/utils/saved-accounts';
 
 import { computed, nextTick, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 import { AuthenticationLogin, z } from '@vben/common-ui';
 import { $t } from '@vben/locales';
@@ -22,6 +23,7 @@ import { HR_ROLE, ROLE_NAME_MAP } from '#/views/hr/roles';
 defineOptions({ name: 'Login' });
 
 const authStore = useAuthStore();
+const router = useRouter();
 const loginRef = ref<{
   getFormApi: () => { setValues: (v: Recordable<any>) => void };
 }>();
@@ -182,10 +184,17 @@ onMounted(async () => {
       ref="loginRef"
       :form-schema="formSchema"
       :loading="authStore.loginLoading"
+      :show-code-login="false"
+      :show-qrcode-login="false"
+      :show-third-party-login="false"
       :show-register="false"
       :show-remember-me="false"
       @submit="handleSubmit"
     />
+
+    <Button block class="mt-4" @click="router.push('/auth/email-login')">
+      邮箱登录
+    </Button>
 
     <label class="mt-2 flex cursor-pointer items-center gap-2 text-sm">
       <input v-model="rememberMe" type="checkbox" />
