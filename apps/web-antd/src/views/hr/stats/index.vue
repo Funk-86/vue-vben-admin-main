@@ -34,7 +34,9 @@ function mapRecord(record?: Record<string, number>) {
 }
 
 function renderCharts() {
-  const deptData = mapRecord(stats.value?.departmentDistribution);
+  const deptData = mapRecord(stats.value?.departmentDistribution).filter(
+    (d) => Number(d.count) > 0,
+  );
   renderDeptChart({
     tooltip: { trigger: 'item' },
     legend: { bottom: 0, type: 'scroll' },
@@ -45,7 +47,7 @@ function renderCharts() {
         data:
           deptData.length > 0
             ? deptData.map((d) => ({ name: d.name, value: d.count }))
-            : [{ name: '暂无数据', value: 0 }],
+            : [{ name: '暂无在职人员', value: 0 }],
         label: { formatter: '{b}: {c}人' },
       },
     ],
