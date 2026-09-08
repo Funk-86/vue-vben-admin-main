@@ -244,7 +244,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <Page description="考勤打卡、台账与加班/申诉/外勤" title="考勤管理">
+  <Page description="考勤打卡、台账与加班/补卡/外勤" title="考勤管理">
     <Tabs v-model:active-key="mainTab">
       <Tabs.TabPane key="records" tab="打卡台账">
         <div class="mb-4 flex flex-wrap items-center gap-3">
@@ -306,7 +306,7 @@ onMounted(async () => {
           </template>
         </Table>
       </Tabs.TabPane>
-      <Tabs.TabPane key="advance" tab="加班/申诉/外勤">
+      <Tabs.TabPane key="advance" tab="加班/补卡/外勤">
         <AdvancePanels />
       </Tabs.TabPane>
     </Tabs>

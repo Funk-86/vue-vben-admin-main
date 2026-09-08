@@ -44,7 +44,13 @@ export interface FieldWorkRequestVO {
   workDate: string;
 }
 
-export async function getOvertimeRequests(params?: PageQuery) {
+export async function getOvertimeRequests(
+  params?: PageQuery & {
+    dateFrom?: string;
+    dateTo?: string;
+    status?: number;
+  },
+) {
   return requestClient.get<PageResult<OvertimeRequestVO>>(
     '/attendance/overtime/requests',
     { params },
@@ -83,7 +89,13 @@ export async function cancelOvertimeRequest(id: number) {
   return requestClient.put(`/attendance/overtime/requests/${id}/cancel`);
 }
 
-export async function getAppealRequests(params?: PageQuery) {
+export async function getAppealRequests(
+  params?: PageQuery & {
+    dateFrom?: string;
+    dateTo?: string;
+    status?: number;
+  },
+) {
   return requestClient.get<PageResult<AttendanceAppealVO>>(
     '/attendance/appeals',
     { params },
@@ -118,7 +130,13 @@ export async function cancelAppealRequest(id: number) {
   return requestClient.put(`/attendance/appeals/${id}/cancel`);
 }
 
-export async function getFieldWorkRequests(params?: PageQuery) {
+export async function getFieldWorkRequests(
+  params?: PageQuery & {
+    dateFrom?: string;
+    dateTo?: string;
+    status?: number;
+  },
+) {
   return requestClient.get<PageResult<FieldWorkRequestVO>>(
     '/attendance/field-work/requests',
     { params },

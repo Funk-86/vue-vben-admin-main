@@ -31,7 +31,7 @@ import {
   getPositionsByDept,
 } from '#/api/hr';
 import { flattenDepartments } from '#/views/hr/constants';
-import { useHrAccess } from '#/views/hr/roles';
+import { ROLE_NAME_MAP, useHrAccess } from '#/views/hr/roles';
 
 import '#/views/hr/hr-common.css';
 
@@ -133,7 +133,11 @@ async function loadList() {
 
 function summaryText(row: PersonnelChangeVO) {
   if (row.changeType === 1) {
-    return `${row.fromDeptName || '-'} / ${row.fromPositionName || '-'} → ${row.toDeptName || '-'} / ${row.toPositionName || '-'}`;
+    const roleHint =
+      row.fromRoleCode || row.toRoleCode
+        ? `（角色 ${ROLE_NAME_MAP[row.fromRoleCode || ''] || row.fromRoleCode || '-'} → ${ROLE_NAME_MAP[row.toRoleCode || ''] || row.toRoleCode || '-'}）`
+        : '';
+    return `${row.fromDeptName || '-'} / ${row.fromPositionName || '-'} → ${row.toDeptName || '-'} / ${row.toPositionName || '-'}${roleHint}`;
   }
   if (row.changeType === 2) {
     return `底薪 ${row.oldSalary ?? '-'} → ${row.newSalary ?? '-'}`;
@@ -200,8 +204,19 @@ async function onCancel(id: number) {
 }
 
 async function onEffect(id: number) {
+  const row = list.value.find((r) => r.id === id);
   await effectPersonnelChange(id);
-  message.success('已生效并回写档案');
+  if (
+    row?.changeType === 1 &&
+    row.toRoleCode &&
+    row.fromRoleCode !== row.toRoleCode
+  ) {
+    message.success(
+      `已生效并回写档案，系统角色已同步为 ${ROLE_NAME_MAP[row.toRoleCode] || row.toRoleCode}`,
+    );
+  } else {
+    message.success('已生效并回写档案');
+  }
   await loadList();
 }
 

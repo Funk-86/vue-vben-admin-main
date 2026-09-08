@@ -12,6 +12,7 @@ export * from './operation-log';
 export * from './performance';
 export * from './personnel';
 export * from './position';
+export * from './position-role-dict';
 export * from './project';
 export * from './salary';
 export * from './task';

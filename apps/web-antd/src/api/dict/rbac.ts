@@ -17,6 +17,7 @@ export interface PermissionNodeVO {
   permName: string;
   permType: number;
   sortOrder?: number;
+  status?: number;
 }
 
 export async function getRbacRoles() {
@@ -41,4 +42,35 @@ export async function saveRolePermissions(
   data: { permissionIds: number[]; permType: 1 | 2 },
 ) {
   return requestClient.put(`/dict/rbac/roles/${roleCode}/permissions`, data);
+}
+
+export async function getPageRoutes() {
+  return requestClient.get<PermissionNodeVO[]>('/dict/rbac/page-routes');
+}
+
+export async function createPageRoute(data: {
+  parentId: number;
+  path: string;
+  permName: string;
+  sortOrder?: number;
+  status?: number;
+}) {
+  return requestClient.post('/dict/rbac/page-routes', data);
+}
+
+export async function updatePageRoute(
+  id: number,
+  data: {
+    parentId: number;
+    path: string;
+    permName: string;
+    sortOrder?: number;
+    status?: number;
+  },
+) {
+  return requestClient.put(`/dict/rbac/page-routes/${id}`, data);
+}
+
+export async function deletePageRoute(id: number) {
+  return requestClient.delete(`/dict/rbac/page-routes/${id}`);
 }

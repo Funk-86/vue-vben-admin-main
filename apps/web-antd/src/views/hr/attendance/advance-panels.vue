@@ -60,6 +60,22 @@ const otPag = reactive({ current: 1, pageSize: 10, total: 0 });
 const appealPag = reactive({ current: 1, pageSize: 10, total: 0 });
 const fieldPag = reactive({ current: 1, pageSize: 10, total: 0 });
 
+const STATUS_OPTIONS = [
+  { label: '待审', value: 0 },
+  { label: '已通过', value: 1 },
+  { label: '已驳回', value: 2 },
+  { label: '已撤销', value: 3 },
+];
+
+const otFilter = reactive({
+  dateRange: undefined as [dayjs.Dayjs, dayjs.Dayjs] | undefined,
+  status: undefined as number | undefined,
+});
+const appealFilter = reactive({
+  dateRange: undefined as [dayjs.Dayjs, dayjs.Dayjs] | undefined,
+  status: undefined as number | undefined,
+});
+
 const otModal = ref(false);
 const appealModal = ref(false);
 const fieldModal = ref(false);
@@ -110,7 +126,7 @@ const appealColumns = [
     title: '申请人',
     width: 100,
   },
-  { dataIndex: 'attendDate', key: 'attendDate', title: '日期', width: 110 },
+  { dataIndex: 'attendDate', key: 'attendDate', title: '补卡日期', width: 110 },
   { dataIndex: 'fromStatus', key: 'fromStatus', title: '原状态', width: 90 },
   { dataIndex: 'toStatus', key: 'toStatus', title: '目标状态', width: 90 },
   { dataIndex: 'reason', key: 'reason', title: '原因', ellipsis: true },
@@ -136,8 +152,11 @@ async function loadOvertime() {
   loading.value = true;
   try {
     const res = await getOvertimeRequests({
+      dateFrom: otFilter.dateRange?.[0]?.format('YYYY-MM-DD'),
+      dateTo: otFilter.dateRange?.[1]?.format('YYYY-MM-DD'),
       pageNum: otPag.current,
       pageSize: otPag.pageSize,
+      status: otFilter.status,
     });
     overtimeList.value = res.records;
     otPag.total = res.total;
@@ -150,8 +169,11 @@ async function loadAppeals() {
   loading.value = true;
   try {
     const res = await getAppealRequests({
+      dateFrom: appealFilter.dateRange?.[0]?.format('YYYY-MM-DD'),
+      dateTo: appealFilter.dateRange?.[1]?.format('YYYY-MM-DD'),
       pageNum: appealPag.current,
       pageSize: appealPag.pageSize,
+      status: appealFilter.status,
     });
     appealList.value = res.records;
     appealPag.total = res.total;
@@ -246,8 +268,30 @@ onMounted(() => {
     "
   >
     <Tabs.TabPane key="overtime" tab="加班申请">
-      <div class="mb-3">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
         <Button type="primary" @click="otModal = true">提交加班</Button>
+        <Select
+          v-model:value="otFilter.status"
+          :options="STATUS_OPTIONS"
+          allow-clear
+          class="w-32"
+          placeholder="状态"
+          @change="
+            () => {
+              otPag.current = 1;
+              loadOvertime();
+            }
+          "
+        />
+        <DatePicker.RangePicker
+          v-model:value="otFilter.dateRange"
+          @change="
+            () => {
+              otPag.current = 1;
+              loadOvertime();
+            }
+          "
+        />
       </div>
       <Table
         :columns="otColumns"
@@ -275,7 +319,7 @@ onMounted(() => {
                   type="link"
                   @click="
                     approveOvertimeRequest(record.id).then(() => {
-                      message.success('已通过');
+                      message.success('已通过并写入考勤备注');
                       loadOvertime();
                     })
                   "
@@ -314,9 +358,31 @@ onMounted(() => {
       </Table>
     </Tabs.TabPane>
 
-    <Tabs.TabPane key="appeal" tab="异常申诉">
-      <div class="mb-3">
-        <Button type="primary" @click="appealModal = true">提交申诉</Button>
+    <Tabs.TabPane key="appeal" tab="补卡申请">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <Button type="primary" @click="appealModal = true">提交补卡</Button>
+        <Select
+          v-model:value="appealFilter.status"
+          :options="STATUS_OPTIONS"
+          allow-clear
+          class="w-32"
+          placeholder="状态"
+          @change="
+            () => {
+              appealPag.current = 1;
+              loadAppeals();
+            }
+          "
+        />
+        <DatePicker.RangePicker
+          v-model:value="appealFilter.dateRange"
+          @change="
+            () => {
+              appealPag.current = 1;
+              loadAppeals();
+            }
+          "
+        />
       </div>
       <Table
         :columns="appealColumns"
@@ -353,7 +419,7 @@ onMounted(() => {
                   type="link"
                   @click="
                     approveAppealRequest(record.id).then(() => {
-                      message.success('已通过');
+                      message.success('已通过并回写考勤台账');
                       loadAppeals();
                     })
                   "
@@ -489,12 +555,12 @@ onMounted(() => {
 
   <Modal
     v-model:open="appealModal"
-    title="提交异常申诉"
+    title="提交补卡申请"
     width="560px"
     @ok="submitAppeal"
   >
     <Form layout="vertical">
-      <Form.Item label="考勤日期" required>
+      <Form.Item label="补卡日期" required>
         <DatePicker v-model:value="appealForm.attendDate" class="w-full" />
       </Form.Item>
       <Form.Item label="原状态">

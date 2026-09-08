@@ -21,16 +21,19 @@ import {
   Space,
   Table,
   Tag,
+  Upload,
 } from 'ant-design-vue';
 import dayjs from 'dayjs';
 
 import {
   createEmployee,
   deleteEmployee,
+  downloadEmployeeImportTemplate,
   exportEmployeesExcel,
   getDepartmentTree,
   getEmployees,
   getPositionsByDept,
+  importEmployeesExcel,
   runProbationRemind,
   updateEmployee,
 } from '#/api/hr';
@@ -57,11 +60,25 @@ const { canFeat } = useHrAccess();
 const canResetPassword = computed(() =>
   hasAnyRole(userStore.userInfo?.roles, [HR_ROLE.SUPER_ADMIN]),
 );
+/** 仅 HR / 超管可修改员工系统角色 */
+const canChangeRole = computed(() =>
+  hasAnyRole(userStore.userInfo?.roles, [
+    HR_ROLE.SUPER_ADMIN,
+    HR_ROLE.HR_ADMIN,
+  ]),
+);
 const canRunProbationRemind = computed(() => canFeat('feat.org.manage'));
 const canExport = computed(() => canFeat('feat.employee.manage'));
 const canManage = computed(() => canFeat('feat.employee.manage'));
 const remindLoading = ref(false);
 const exportLoading = ref(false);
+const importLoading = ref(false);
+const importResultOpen = ref(false);
+const importResult = ref<null | {
+  failCount: number;
+  failures: { empNo?: string; reason?: string; row?: number }[];
+  successCount: number;
+}>(null);
 
 const loading = ref(false);
 const list = ref<EmployeeVO[]>([]);
@@ -76,6 +93,7 @@ const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 const query = reactive({
   deptId: undefined as number | undefined,
   keyword: '',
+  roleCode: undefined as string | undefined,
   status: undefined as number | undefined,
 });
 
@@ -130,6 +148,7 @@ const columns = [
   { dataIndex: 'name', key: 'name', title: '姓名', width: 100 },
   { dataIndex: 'deptName', key: 'deptName', title: '部门' },
   { dataIndex: 'positionName', key: 'positionName', title: '岗位' },
+  { dataIndex: 'roleCode', key: 'roleCode', title: '角色', width: 110 },
   { dataIndex: 'gender', key: 'gender', title: '性别', width: 70 },
   { dataIndex: 'phone', key: 'phone', title: '手机号', width: 130 },
   { dataIndex: 'status', key: 'status', title: '状态', width: 90 },
@@ -156,6 +175,7 @@ async function loadData(page?: { current: number; pageSize: number }) {
       pageSize: page?.pageSize ?? pagination.pageSize,
       deptId: query.deptId,
       status: query.status,
+      roleCode: query.roleCode,
       keyword: query.keyword.trim() || undefined,
     };
     const result = await getEmployees(params);
@@ -211,6 +231,7 @@ async function openEdit(record: EmployeeVO) {
     password: '',
     phone: record.phone ?? '',
     positionId: record.positionId,
+    roleCode: record.roleCode || HR_ROLE.EMPLOYEE,
     status: record.status ?? 1,
   });
   modalOpen.value = true;
@@ -262,6 +283,9 @@ async function handleSubmit() {
         ...payload,
         ...(canResetPassword.value && formState.password
           ? { password: formState.password }
+          : {}),
+        ...(canChangeRole.value && formState.roleCode
+          ? { roleCode: formState.roleCode }
           : {}),
       };
       if (
@@ -326,6 +350,7 @@ async function handleExport() {
     const blob = await exportEmployeesExcel({
       deptId: query.deptId,
       status: query.status,
+      roleCode: query.roleCode,
       keyword: query.keyword.trim() || undefined,
     });
     downloadFileFromBlob({ fileName: '员工花名册.xlsx', source: blob });
@@ -335,6 +360,31 @@ async function handleExport() {
   } finally {
     exportLoading.value = false;
   }
+}
+
+async function handleDownloadImportTemplate() {
+  const blob = await downloadEmployeeImportTemplate();
+  downloadFileFromBlob({ fileName: '员工导入模板.xlsx', source: blob });
+  message.success('模板已下载');
+}
+
+async function handleImportExcel(file: File) {
+  importLoading.value = true;
+  try {
+    const result = await importEmployeesExcel(file);
+    importResult.value = {
+      successCount: result.successCount ?? 0,
+      failCount: result.failCount ?? 0,
+      failures: result.failures ?? [],
+    };
+    importResultOpen.value = true;
+    if ((result.successCount ?? 0) > 0) {
+      await loadData({ current: 1, pageSize: pagination.pageSize });
+    }
+  } finally {
+    importLoading.value = false;
+  }
+  return false;
 }
 
 onMounted(async () => {
@@ -365,6 +415,14 @@ onMounted(async () => {
         placeholder="在职状态"
         popup-class-name="hr-filter-select-dropdown"
       />
+      <Select
+        v-model:value="query.roleCode"
+        allow-clear
+        :options="roleOptions"
+        class="w-36 shrink-0"
+        placeholder="选择角色"
+        popup-class-name="hr-filter-select-dropdown"
+      />
       <Input
         v-model:value="query.keyword"
         allow-clear
@@ -382,6 +440,21 @@ onMounted(async () => {
       <Button v-if="canExport" :loading="exportLoading" @click="handleExport">
         导出 Excel
       </Button>
+      <Button
+        v-if="canChangeRole"
+        :loading="importLoading"
+        @click="handleDownloadImportTemplate"
+      >
+        下载导入模板
+      </Button>
+      <Upload
+        v-if="canChangeRole"
+        :before-upload="handleImportExcel"
+        :show-upload-list="false"
+        accept=".xlsx,.xls"
+      >
+        <Button :loading="importLoading">导入 Excel</Button>
+      </Upload>
       <Button
         v-if="canRunProbationRemind"
         :loading="remindLoading"
@@ -409,6 +482,9 @@ onMounted(async () => {
             class="size-10 rounded-full object-cover"
           />
           <span v-else class="text-gray-400">-</span>
+        </template>
+        <template v-else-if="column.key === 'roleCode'">
+          {{ ROLE_NAME_MAP[record.roleCode] || record.roleCode || '-' }}
         </template>
         <template v-else-if="column.key === 'gender'">
           {{ GENDER_MAP[record.gender] ?? '-' }}
@@ -501,6 +577,15 @@ onMounted(async () => {
               placeholder="留空则不修改密码"
             />
           </Form.Item>
+          <Form.Item v-if="editing" label="系统角色" :required="canChangeRole">
+            <Select
+              v-model:value="formState.roleCode"
+              :disabled="!canChangeRole"
+              :options="roleOptions"
+              class="w-full"
+              placeholder="选择角色"
+            />
+          </Form.Item>
           <Form.Item label="部门" required>
             <Select
               v-model:value="formState.deptId"
@@ -568,6 +653,30 @@ onMounted(async () => {
           </Form.Item>
         </div>
       </Form>
+    </Modal>
+    <Modal
+      v-model:open="importResultOpen"
+      title="导入结果"
+      :footer="null"
+      destroy-on-close
+    >
+      <p>
+        成功 {{ importResult?.successCount ?? 0 }} 条，失败
+        {{ importResult?.failCount ?? 0 }} 条
+      </p>
+      <Table
+        v-if="(importResult?.failures?.length ?? 0) > 0"
+        class="mt-3"
+        size="small"
+        :pagination="false"
+        :data-source="importResult?.failures || []"
+        :columns="[
+          { title: '行号', dataIndex: 'row', width: 70 },
+          { title: '工号', dataIndex: 'empNo', width: 100 },
+          { title: '原因', dataIndex: 'reason' },
+        ]"
+        row-key="row"
+      />
     </Modal>
   </Page>
 </template>

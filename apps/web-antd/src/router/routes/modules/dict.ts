@@ -43,6 +43,16 @@ const routes: RouteRecordRaw[] = [
           title: '页面字典',
         },
       },
+      {
+        name: 'DictPositionRole',
+        path: '/dict/position-role',
+        component: () => import('#/views/dict/position-role/index.vue'),
+        meta: {
+          authority: ROLE_SUPER_ADMIN,
+          icon: 'lucide:briefcase-business',
+          title: '岗位角色字典',
+        },
+      },
     ],
   },
 ];

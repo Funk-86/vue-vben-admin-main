@@ -32,6 +32,8 @@ export interface PersonnelChangeVO {
   toDeptName?: string;
   toPositionId?: number;
   toPositionName?: string;
+  fromRoleCode?: string;
+  toRoleCode?: string;
 }
 
 export async function getPersonnelChanges(
@@ -61,7 +63,7 @@ export async function createPersonnelChange(data: {
 
 export async function approvePersonnelChange(
   id: number,
-  data: { approveRemark?: string; approved: boolean },
+  data: { approved: boolean; approveRemark?: string },
 ) {
   return requestClient.post(`/personnel-changes/${id}/approve`, data);
 }

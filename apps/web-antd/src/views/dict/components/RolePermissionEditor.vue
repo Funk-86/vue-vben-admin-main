@@ -3,14 +3,7 @@ import type { PermissionNodeVO, RoleVO } from '#/api/dict/rbac';
 
 import { computed, onMounted, reactive, ref } from 'vue';
 
-import {
-  Button,
-  Card,
-  Checkbox,
-  Space,
-  Spin,
-  message,
-} from 'ant-design-vue';
+import { Button, Card, Checkbox, message, Space, Spin } from 'ant-design-vue';
 
 import {
   getPermissionTree,
@@ -49,7 +42,7 @@ const groupChecked = reactive<Record<number, number[]>>({});
 const leafIds = computed(() => {
   const ids: number[] = [];
   for (const g of groups.value) {
-    if (!g.children.length) {
+    if (g.children.length === 0) {
       ids.push(g.id);
     } else {
       for (const c of g.children) ids.push(c.id);
@@ -62,7 +55,7 @@ const leafCheckedCount = computed(() => {
   let n = 0;
   for (const g of groups.value) {
     const selected = groupChecked[g.id] || [];
-    if (!g.children.length) {
+    if (g.children.length === 0) {
       if (selected.includes(g.id)) n += 1;
     } else {
       n += selected.length;
@@ -78,9 +71,9 @@ function childOptions(g: PermGroup) {
   }));
 }
 
-function groupCheckState(g: PermGroup): boolean | 'indeterminate' {
+function groupCheckState(g: PermGroup): 'indeterminate' | boolean {
   const selected = groupChecked[g.id] || [];
-  if (!g.children.length) {
+  if (g.children.length === 0) {
     return selected.includes(g.id);
   }
   const n = selected.length;
@@ -90,7 +83,7 @@ function groupCheckState(g: PermGroup): boolean | 'indeterminate' {
 }
 
 function onGroupToggle(g: PermGroup, checked: boolean) {
-  if (!g.children.length) {
+  if (g.children.length === 0) {
     groupChecked[g.id] = checked ? [g.id] : [];
     return;
   }
@@ -102,7 +95,7 @@ function collectPermissionIds(): number[] {
   for (const g of groups.value) {
     const selected = groupChecked[g.id] || [];
     for (const id of selected) ids.add(Number(id));
-    if (g.children.length) {
+    if (g.children.length > 0) {
       if (selected.length === g.children.length && selected.length > 0) {
         ids.add(g.id);
       }
@@ -128,18 +121,17 @@ function toGroups(tree: PermissionNodeVO[]): PermGroup[] {
 function applyCheckedIds(ids: Array<number | string>) {
   const set = new Set(ids.map(Number).filter((n) => !Number.isNaN(n)));
   for (const g of groups.value) {
-    if (!g.children.length) {
+    if (g.children.length === 0) {
       groupChecked[g.id] = set.has(g.id) ? [g.id] : [];
       continue;
     }
     // 父节点在库中仅表示“分组”，以子节点勾选为准；父全选时再勾上全部子
     const fromKids = g.children.map((c) => c.id).filter((id) => set.has(id));
-    if (set.has(g.id) && fromKids.length === 0) {
-      // 兼容：库里只有父、没有子（历史脏数据）→ 视为全选子项
-      groupChecked[g.id] = g.children.map((c) => c.id);
-    } else {
-      groupChecked[g.id] = fromKids;
-    }
+    // 兼容：库里只有父、没有子（历史脏数据）→ 视为全选子项
+    groupChecked[g.id] =
+      set.has(g.id) && fromKids.length === 0
+        ? g.children.map((c) => c.id)
+        : fromKids;
   }
 }
 
@@ -166,7 +158,7 @@ async function selectRole(roleCode: string) {
   activeRole.value = roleCode;
   loading.value = true;
   try {
-    if (!groups.value.length) await loadTree();
+    if (groups.value.length === 0) await loadTree();
     await loadChecked(roleCode);
   } finally {
     loading.value = false;
@@ -208,14 +200,15 @@ async function onSave() {
       permissionIds,
     });
 
-    const raw = (await getRolePermissionIds(activeRole.value, props.permType)) || [];
+    const raw =
+      (await getRolePermissionIds(activeRole.value, props.permType)) || [];
     const rawSet = new Set(raw.map(Number));
     const missing = leafIds.value.filter(
       (id) => permissionIds.includes(id) && !rawSet.has(id),
     );
     applyCheckedIds(raw);
 
-    if (missing.length) {
+    if (missing.length > 0) {
       message.error(
         `保存异常：未落库 ${missing.length} 项（id: ${missing.slice(0, 8).join(',')}），请把该提示发给开发`,
       );
@@ -242,6 +235,8 @@ function checkNone() {
 }
 
 onMounted(reload);
+
+defineExpose({ reload });
 </script>
 
 <template>
@@ -263,7 +258,9 @@ onMounted(reload);
     <Card size="small">
       <p class="mb-3 text-sm text-gray-500">
         当前角色：
-        <b>{{ roles.find((r) => r.roleCode === activeRole)?.roleName || '-' }}</b>
+        <b>{{
+          roles.find((r) => r.roleCode === activeRole)?.roleName || '-'
+        }}</b>
         —
         <span class="text-xs text-gray-400">勾选版 v3</span>
         ；

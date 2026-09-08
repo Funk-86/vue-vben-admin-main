@@ -14,6 +14,7 @@ export async function getEmployees(
   params?: PageQuery & {
     deptId?: number;
     keyword?: string;
+    roleCode?: string;
     status?: number;
   },
 ) {
@@ -68,7 +69,30 @@ export async function runProbationRemind() {
 export async function exportEmployeesExcel(params?: {
   deptId?: number;
   keyword?: string;
+  roleCode?: string;
   status?: number;
 }) {
   return requestClient.download<Blob>('/employees/export', { params });
+}
+
+export interface EmployeeImportFailure {
+  row?: number;
+  empNo?: string;
+  reason?: string;
+}
+
+export interface EmployeeImportResult {
+  successCount: number;
+  failCount: number;
+  failures?: EmployeeImportFailure[];
+}
+
+export async function downloadEmployeeImportTemplate() {
+  return requestClient.download<Blob>('/employees/import-template');
+}
+
+export async function importEmployeesExcel(file: File) {
+  return requestClient.upload<EmployeeImportResult>('/employees/import', {
+    file,
+  });
 }

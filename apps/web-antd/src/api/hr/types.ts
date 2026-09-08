@@ -62,6 +62,8 @@ export interface EmployeeUpdateParams {
   password?: string;
   phone?: string;
   positionId?: number;
+  /** 仅 HR/超管可修改系统角色 */
+  roleCode?: string;
   status?: number;
 }
 
@@ -82,6 +84,8 @@ export interface EmployeeVO {
   positionName?: string;
   probationEnd?: string;
   remark?: string;
+  /** 系统角色编码 */
+  roleCode?: string;
   status: number;
 }
 
