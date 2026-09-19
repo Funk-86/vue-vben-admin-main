@@ -1,11 +1,41 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-import { ROLE_ALL, ROLE_HR_STAFF, ROLE_MANAGER_UP } from '#/views/hr/roles';
+import {
+  ROLE_ALL,
+  ROLE_CANDIDATE,
+  ROLE_HR_COMP,
+  ROLE_HR_ER,
+  ROLE_HR_SSC,
+  ROLE_INTERVIEW_ROOM,
+  ROLE_MANAGER_UP,
+  ROLE_RECRUIT_MANAGER,
+} from '#/views/hr/roles';
 
 /**
  * 侧栏按业务拆分多个顶级菜单；页面 path 仍保持 /hr/*，避免影响既有链接与书签。
  */
 const routes: RouteRecordRaw[] = [
+  {
+    meta: {
+      icon: 'lucide:clipboard-check',
+      order: 0,
+      title: '审批中心',
+    },
+    name: 'ApprovalCenter',
+    path: '/approval',
+    children: [
+      {
+        name: 'HrTodo',
+        path: '/hr/todo',
+        component: () => import('#/views/hr/todo/index.vue'),
+        meta: {
+          authority: ROLE_ALL,
+          icon: 'lucide:inbox',
+          title: '审批待办',
+        },
+      },
+    ],
+  },
   {
     meta: {
       icon: 'lucide:building-2',
@@ -20,7 +50,7 @@ const routes: RouteRecordRaw[] = [
         path: '/hr/department',
         component: () => import('#/views/hr/department/index.vue'),
         meta: {
-          authority: ROLE_HR_STAFF,
+          authority: ROLE_HR_SSC,
           icon: 'lucide:git-branch',
           title: '部门管理',
         },
@@ -30,7 +60,7 @@ const routes: RouteRecordRaw[] = [
         path: '/hr/position',
         component: () => import('#/views/hr/position/index.vue'),
         meta: {
-          authority: ROLE_HR_STAFF,
+          authority: ROLE_HR_SSC,
           icon: 'lucide:briefcase',
           title: '岗位管理',
         },
@@ -66,13 +96,43 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        name: 'HrContract',
+        path: '/hr/contract',
+        component: () => import('#/views/hr/contract/index.vue'),
+        meta: {
+          authority: ROLE_HR_SSC,
+          icon: 'lucide:file-signature',
+          title: '合同主数据',
+        },
+      },
+      {
         name: 'HrContractExpire',
         path: '/hr/contract-expire',
         component: () => import('#/views/hr/contract-expire/index.vue'),
         meta: {
-          authority: ROLE_HR_STAFF,
+          authority: ROLE_HR_SSC,
           icon: 'lucide:calendar-x',
           title: '合同到期',
+        },
+      },
+      {
+        name: 'HrOnboarding',
+        path: '/hr/onboarding',
+        component: () => import('#/views/hr/onboarding/index.vue'),
+        meta: {
+          authority: ROLE_HR_SSC,
+          icon: 'lucide:user-plus',
+          title: '入职清单',
+        },
+      },
+      {
+        name: 'HrOffboarding',
+        path: '/hr/offboarding',
+        component: () => import('#/views/hr/offboarding/index.vue'),
+        meta: {
+          authority: ROLE_HR_SSC,
+          icon: 'lucide:user-minus',
+          title: '离职交接',
         },
       },
     ],
@@ -104,6 +164,26 @@ const routes: RouteRecordRaw[] = [
           authority: ROLE_ALL,
           icon: 'lucide:calendar-off',
           title: '请假管理',
+        },
+      },
+      {
+        name: 'HrHoliday',
+        path: '/hr/holiday',
+        component: () => import('#/views/hr/holiday/index.vue'),
+        meta: {
+          authority: ROLE_HR_SSC,
+          icon: 'lucide:calendar-days',
+          title: '节假日日历',
+        },
+      },
+      {
+        name: 'HrAttendanceGroup',
+        path: '/hr/attendance-group',
+        component: () => import('#/views/hr/attendance-group/index.vue'),
+        meta: {
+          authority: ROLE_HR_SSC,
+          icon: 'lucide:calendar-range',
+          title: '考勤组排班',
         },
       },
     ],
@@ -173,9 +253,29 @@ const routes: RouteRecordRaw[] = [
         path: '/hr/salary',
         component: () => import('#/views/hr/salary/index.vue'),
         meta: {
-          authority: ROLE_HR_STAFF,
+          authority: ROLE_HR_COMP,
           icon: 'lucide:wallet',
           title: '薪资管理',
+        },
+      },
+      {
+        name: 'HrSeniorityGrade',
+        path: '/hr/seniority-grade',
+        component: () => import('#/views/hr/seniority-grade/index.vue'),
+        meta: {
+          authority: ROLE_HR_COMP,
+          icon: 'lucide:layers',
+          title: '工龄薪档',
+        },
+      },
+      {
+        name: 'HrRetire',
+        path: '/hr/retire',
+        component: () => import('#/views/hr/retire/index.vue'),
+        meta: {
+          authority: ROLE_HR_ER,
+          icon: 'lucide:person-standing',
+          title: '退休管理',
         },
       },
       {
@@ -204,16 +304,60 @@ const routes: RouteRecordRaw[] = [
         path: '/hr/stats',
         component: () => import('#/views/hr/stats/index.vue'),
         meta: {
-          authority: ROLE_HR_STAFF,
+          authority: ROLE_HR_COMP,
           icon: 'lucide:chart-column',
           title: '统计看板',
         },
       },
     ],
   },
+
   {
     meta: {
-      authority: ROLE_HR_STAFF,
+      icon: 'lucide:user-search',
+      order: 6,
+      title: '招聘面试',
+    },
+    name: 'RecruitModule',
+    path: '/recruit-module',
+    children: [
+      {
+        name: 'HrRecruit',
+        path: '/hr/recruit',
+        component: () => import('#/views/hr/recruit/index.vue'),
+        meta: {
+          authority: ROLE_RECRUIT_MANAGER,
+          icon: 'lucide:briefcase',
+          title: '招聘工作台',
+        },
+      },
+      {
+        name: 'HrRecruitMine',
+        path: '/hr/recruit-mine',
+        component: () => import('#/views/hr/recruit/mine.vue'),
+        meta: {
+          authority: ROLE_CANDIDATE,
+          icon: 'lucide:clipboard-list',
+          title: '我的求职',
+        },
+      },
+      {
+        name: 'HrInterviewRoom',
+        path: '/hr/interview-room',
+        component: () => import('#/views/hr/interview-room/index.vue'),
+        meta: {
+          authority: ROLE_INTERVIEW_ROOM,
+          hideInMenu: true,
+          icon: 'lucide:video',
+          title: 'AI面试间',
+        },
+      },
+    ],
+  },
+
+  {
+    meta: {
+      authority: ROLE_HR_ER,
       icon: 'lucide:shield-check',
       order: 9,
       title: '系统审计',
@@ -226,7 +370,7 @@ const routes: RouteRecordRaw[] = [
         path: '/hr/operation-log',
         component: () => import('#/views/hr/operation-log/index.vue'),
         meta: {
-          authority: ROLE_HR_STAFF,
+          authority: ROLE_HR_ER,
           icon: 'lucide:scroll-text',
           title: '操作日志',
         },

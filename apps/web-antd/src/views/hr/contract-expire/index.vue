@@ -14,7 +14,6 @@ import {
   message,
   Modal,
   Select,
-  Space,
   Table,
   Tag,
 } from 'ant-design-vue';
@@ -162,62 +161,64 @@ onMounted(async () => {
     description="劳动合同即将到期 / 已过期工作台（站内信 + 邮件提醒）"
     title="合同到期"
   >
-    <Form class="mb-4 flex flex-wrap gap-3" layout="inline">
-      <Form.Item label="状态">
+    <div class="hr-filter-bar">
+      <div class="hr-filter-field">
+        <span class="hr-filter-label">状态</span>
         <Select
           v-model:value="query.status"
           :options="statusOptions"
           :popup-match-select-width="false"
-          class="w-36"
+          class="w-36 shrink-0"
           popup-class-name="hr-filter-select-dropdown"
         />
-      </Form.Item>
-      <Form.Item label="窗口">
+      </div>
+      <div class="hr-filter-field">
+        <span class="hr-filter-label">窗口</span>
         <Select
           v-model:value="query.withinDays"
           :options="withinOptions"
           :popup-match-select-width="false"
-          class="w-28"
+          class="w-28 shrink-0"
           popup-class-name="hr-filter-select-dropdown"
         />
-      </Form.Item>
-      <Form.Item label="部门">
+      </div>
+      <div class="hr-filter-field">
+        <span class="hr-filter-label">部门</span>
         <Select
           v-model:value="query.deptId"
           :options="deptOptions"
           :popup-match-select-width="false"
           allow-clear
-          class="w-48"
+          class="w-48 shrink-0"
           option-filter-prop="label"
           placeholder="全部"
           popup-class-name="hr-filter-select-dropdown"
           show-search
         />
-      </Form.Item>
-      <Form.Item label="关键字">
+      </div>
+      <div class="hr-filter-field">
+        <span class="hr-filter-label">关键字</span>
         <Input
           v-model:value="query.keyword"
           allow-clear
-          class="w-44"
+          class="!w-44 shrink-0"
           placeholder="姓名/工号"
         />
-      </Form.Item>
-      <Form.Item>
-        <Space>
-          <Button type="primary" @click="onSearch">查询</Button>
-          <Button @click="onReset">重置</Button>
-          <Button
-            :loading="remindLoading"
-            ghost
-            type="primary"
-            @click="handleRemind"
-          >
-            立即扫描提醒
-          </Button>
-          <Button @click="router.push('/hr/document')">文档管理</Button>
-        </Space>
-      </Form.Item>
-    </Form>
+      </div>
+      <div class="hr-filter-actions">
+        <Button type="primary" @click="onSearch">查询</Button>
+        <Button @click="onReset">重置</Button>
+        <Button
+          :loading="remindLoading"
+          ghost
+          type="primary"
+          @click="handleRemind"
+        >
+          立即扫描提醒
+        </Button>
+        <Button @click="router.push('/hr/document')">文档管理</Button>
+      </div>
+    </div>
 
     <Table
       :columns="columns"

@@ -10,11 +10,9 @@ import {
   DatePicker,
   Descriptions,
   Drawer,
-  Form,
   Input,
   message,
   Select,
-  Space,
   Table,
   Tag,
 } from 'ant-design-vue';
@@ -22,6 +20,7 @@ import dayjs from 'dayjs';
 
 import { getOperationLogDetail, getOperationLogs } from '#/api/hr';
 
+import '#/views/hr/hr-common.css';
 const loading = ref(false);
 const detailLoading = ref(false);
 const list = ref<OperationLogVO[]>([]);
@@ -144,37 +143,38 @@ onMounted(() => {
     description="系统操作审计日志（可查看 Request / Response）"
     title="操作日志"
   >
-    <Form layout="inline" class="mb-4 flex flex-wrap gap-2">
-      <Form.Item label="模块">
+    <div class="hr-filter-bar">
+      <div class="hr-filter-field">
+        <span class="hr-filter-label">模块</span>
         <Input
           v-model:value="query.module"
           allow-clear
+          class="!w-40 shrink-0"
           placeholder="如：员工管理"
-          class="w-40"
         />
-      </Form.Item>
-      <Form.Item label="结果">
+      </div>
+      <div class="hr-filter-field">
+        <span class="hr-filter-label">结果</span>
         <Select
           v-model:value="query.status"
           allow-clear
+          class="w-28 shrink-0"
           placeholder="全部"
-          class="w-28"
           :options="[
             { label: '成功', value: 1 },
             { label: '失败', value: 0 },
           ]"
         />
-      </Form.Item>
-      <Form.Item label="时间">
-        <DatePicker.RangePicker v-model:value="query.range" />
-      </Form.Item>
-      <Form.Item>
-        <Space>
-          <Button type="primary" @click="onSearch">查询</Button>
-          <Button @click="onReset">重置</Button>
-        </Space>
-      </Form.Item>
-    </Form>
+      </div>
+      <div class="hr-filter-field">
+        <span class="hr-filter-label">时间</span>
+        <DatePicker.RangePicker v-model:value="query.range" class="shrink-0" />
+      </div>
+      <div class="hr-filter-actions">
+        <Button type="primary" @click="onSearch">查询</Button>
+        <Button @click="onReset">重置</Button>
+      </div>
+    </div>
 
     <Table
       :columns="columns"

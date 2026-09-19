@@ -6,6 +6,7 @@ export interface SalaryPreviewVO {
   actualSalary: number;
   baseSalary: number;
   bonus: number;
+  companySeniorityYears?: number;
   deductDetail?: string;
   deduction: number;
   empNo?: string;
@@ -13,7 +14,10 @@ export interface SalaryPreviewVO {
   employeeName?: string;
   positionId?: number;
   positionName?: string;
+  salaryCoeff?: number;
   salaryMonth: string;
+  seniorityPay?: number;
+  seniorityYears?: number;
   taskBonus: number;
   tip?: string;
 }
@@ -96,6 +100,8 @@ export async function createSalary(data: {
   positionId?: number;
   remark?: string;
   salaryMonth: string;
+  seniorityPay?: number;
+  seniorityYears?: number;
   taskBonus?: number;
 }) {
   return requestClient.post('/salary', data);
@@ -185,4 +191,47 @@ export async function updateScoreBonusDict(
 
 export async function deleteScoreBonusDict(id: number) {
   return requestClient.delete(`/salary/score-bonus-dict/${id}`);
+}
+
+export interface SeniorityGradeVO {
+  id: number;
+  maxYears: number;
+  minYears: number;
+  remark?: string;
+  salaryCoeff: number;
+  seniorityPay: number;
+  status: number;
+}
+
+export async function getSeniorityGradeList() {
+  return requestClient.get<SeniorityGradeVO[]>('/salary/seniority-grades');
+}
+
+export async function createSeniorityGrade(data: {
+  maxYears: number;
+  minYears: number;
+  remark?: string;
+  salaryCoeff: number;
+  seniorityPay: number;
+  status?: number;
+}) {
+  return requestClient.post('/salary/seniority-grades', data);
+}
+
+export async function updateSeniorityGrade(
+  id: number,
+  data: {
+    maxYears: number;
+    minYears: number;
+    remark?: string;
+    salaryCoeff: number;
+    seniorityPay: number;
+    status?: number;
+  },
+) {
+  return requestClient.put(`/salary/seniority-grades/${id}`, data);
+}
+
+export async function deleteSeniorityGrade(id: number) {
+  return requestClient.delete(`/salary/seniority-grades/${id}`);
 }

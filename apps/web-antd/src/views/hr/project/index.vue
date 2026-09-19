@@ -37,6 +37,8 @@ import {
 import { TASK_STATUS_MAP } from '#/views/hr/constants';
 import { useHrAccess } from '#/views/hr/roles';
 
+import '#/views/hr/hr-common.css';
+
 const PROJECT_STATUS_MAP: Record<number, string> = {
   0: '规划中',
   1: '进行中',
@@ -250,11 +252,11 @@ onMounted(async () => {
 
 <template>
   <Page title="项目管理" description="项目建档、成员与任务进度">
-    <div class="mb-4 flex flex-wrap items-center gap-3">
+    <div class="hr-toolbar">
       <Select
         v-if="canSeeAll"
         v-model:value="scope"
-        class="w-32"
+        class="w-28"
         :options="[
           { label: '我参与的', value: 'mine' },
           { label: '全部', value: 'all' },
@@ -269,7 +271,7 @@ onMounted(async () => {
       <Select
         v-model:value="statusFilter"
         allow-clear
-        class="w-32"
+        class="w-28"
         placeholder="状态"
         :options="[
           { label: '规划中', value: 0 },

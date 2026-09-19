@@ -116,6 +116,9 @@ const formState = reactive({
 const assignableRoles = [
   HR_ROLE.EMPLOYEE,
   HR_ROLE.DEPT_MANAGER,
+  HR_ROLE.HR_SSC,
+  HR_ROLE.HR_COMP,
+  HR_ROLE.HR_ER,
   HR_ROLE.HR_ADMIN,
 ];
 

@@ -21,6 +21,9 @@ const ROLE_HINT: Record<string, string> = {
   DEPT_MANAGER: 'management',
   EMPLOYEE: 'employee',
   HR_ADMIN: 'hr',
+  HR_COMP: 'comp',
+  HR_ER: 'er',
+  HR_SSC: 'ssc',
   SUPER_ADMIN: 'admin',
 };
 

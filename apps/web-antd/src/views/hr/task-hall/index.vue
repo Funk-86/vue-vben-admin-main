@@ -43,11 +43,18 @@ const canReclaim = computed(() =>
   hasAnyRole(userRoles.value, [
     HR_ROLE.DEPT_MANAGER,
     HR_ROLE.HR_ADMIN,
+    HR_ROLE.HR_SSC,
     HR_ROLE.SUPER_ADMIN,
   ]),
 );
 const isHr = computed(() =>
-  hasAnyRole(userRoles.value, [HR_ROLE.HR_ADMIN, HR_ROLE.SUPER_ADMIN]),
+  hasAnyRole(userRoles.value, [
+    HR_ROLE.HR_ADMIN,
+    HR_ROLE.HR_SSC,
+    HR_ROLE.HR_COMP,
+    HR_ROLE.HR_ER,
+    HR_ROLE.SUPER_ADMIN,
+  ]),
 );
 
 const loading = ref(false);

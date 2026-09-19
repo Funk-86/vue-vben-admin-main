@@ -69,8 +69,10 @@ export interface EmployeeUpdateParams {
 
 export interface EmployeeVO {
   avatar?: string;
+  companySeniorityYears?: number;
   deptId: number;
   deptName?: string;
+  effectiveSeniorityYears?: number;
   email?: string;
   empNo: string;
   employmentType?: number;
@@ -86,6 +88,7 @@ export interface EmployeeVO {
   remark?: string;
   /** 系统角色编码 */
   roleCode?: string;
+  seniorityAdjustYears?: number;
   status: number;
 }
 
@@ -149,6 +152,8 @@ export interface SalaryVO {
   positionName?: string;
   remark?: string;
   salaryMonth: string;
+  seniorityPay?: number;
+  seniorityYears?: number;
   status: number;
   taskBonus?: number;
 }

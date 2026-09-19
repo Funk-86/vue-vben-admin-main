@@ -223,14 +223,14 @@ onMounted(async () => {
     title="绩效考核"
     description="月/季考核单，经理五级评分，确认后进入员工档案"
   >
-    <div class="mb-4 flex flex-wrap items-center gap-3">
+    <div class="hr-toolbar">
       <Select
         v-if="canManage"
         v-model:value="query.employeeId"
         :options="employeeOptions"
         :popup-match-select-width="false"
         allow-clear
-        class="w-56"
+        class="w-52"
         option-filter-prop="label"
         placeholder="员工"
         popup-class-name="hr-filter-select-dropdown"
@@ -244,14 +244,14 @@ onMounted(async () => {
         ]"
         :popup-match-select-width="false"
         allow-clear
-        class="w-32"
+        class="w-28"
         placeholder="周期类型"
         popup-class-name="hr-filter-select-dropdown"
       />
       <Input
         v-model:value="query.periodKey"
         allow-clear
-        class="w-40"
+        class="hr-w-period"
         placeholder="如 2026-08 / 2026-Q3"
       />
       <Select
@@ -263,7 +263,7 @@ onMounted(async () => {
         ]"
         :popup-match-select-width="false"
         allow-clear
-        class="w-32"
+        class="w-28"
         placeholder="状态"
         popup-class-name="hr-filter-select-dropdown"
       />

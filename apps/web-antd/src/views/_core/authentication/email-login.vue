@@ -21,8 +21,13 @@ const loading = ref(false);
 const ROLE_OPTIONS: BasicOption[] = [
   HR_ROLE.SUPER_ADMIN,
   HR_ROLE.HR_ADMIN,
+  HR_ROLE.HR_SSC,
+  HR_ROLE.HR_COMP,
+  HR_ROLE.HR_ER,
   HR_ROLE.DEPT_MANAGER,
   HR_ROLE.EMPLOYEE,
+  HR_ROLE.INTERVIEWER,
+  HR_ROLE.CANDIDATE,
 ].map((code) => ({
   label: ROLE_NAME_MAP[code] ?? code,
   value: code,

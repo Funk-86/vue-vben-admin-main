@@ -52,8 +52,11 @@ const form = reactive({
 });
 
 const roleOptions = [
-  { label: ROLE_NAME_MAP.HR_ADMIN || 'HR管理员', value: 'HR_ADMIN' },
-  { label: ROLE_NAME_MAP.DEPT_MANAGER || '部门经理', value: 'DEPT_MANAGER' },
+  { label: ROLE_NAME_MAP.HR_ADMIN || 'HR管理员(兼容)', value: 'HR_ADMIN' },
+  { label: ROLE_NAME_MAP.HR_SSC || 'HR共享服务', value: 'HR_SSC' },
+  { label: ROLE_NAME_MAP.HR_COMP || '薪酬专员', value: 'HR_COMP' },
+  { label: ROLE_NAME_MAP.HR_ER || '员工关系', value: 'HR_ER' },
+  { label: ROLE_NAME_MAP.DEPT_MANAGER || '业务经理', value: 'DEPT_MANAGER' },
   { label: ROLE_NAME_MAP.EMPLOYEE || '普通员工', value: 'EMPLOYEE' },
 ];
 

@@ -376,81 +376,84 @@ onMounted(async () => {
     description="集中管理劳动合同、协议、薪资确认单等 Word/PDF 文档"
     title="文档管理"
   >
-    <Form layout="inline" class="mb-4 flex flex-wrap items-center gap-y-2">
-      <Form.Item v-if="canFilterOrg" label="部门">
+    <div class="hr-filter-bar">
+      <div v-if="canFilterOrg" class="hr-filter-field">
+        <span class="hr-filter-label">部门</span>
         <Select
           v-model:value="query.deptId"
           :options="deptOptions"
           :popup-match-select-width="false"
           allow-clear
-          class="w-52"
+          class="w-52 shrink-0"
           option-filter-prop="label"
           placeholder="全部"
           popup-class-name="hr-filter-select-dropdown"
           show-search
         />
-      </Form.Item>
-      <Form.Item v-if="canFilterOrg" label="岗位">
+      </div>
+      <div v-if="canFilterOrg" class="hr-filter-field">
+        <span class="hr-filter-label">岗位</span>
         <Select
           v-model:value="query.positionId"
           :options="positionOptions"
           :popup-match-select-width="false"
           allow-clear
-          class="w-52"
+          class="w-52 shrink-0"
           option-filter-prop="label"
           placeholder="全部"
           popup-class-name="hr-filter-select-dropdown"
           show-search
         />
-      </Form.Item>
-      <Form.Item label="员工">
+      </div>
+      <div class="hr-filter-field">
+        <span class="hr-filter-label">员工</span>
         <Select
           v-model:value="query.employeeId"
           :options="employeeOptions"
           :popup-match-select-width="false"
           allow-clear
-          class="w-64"
+          class="w-64 shrink-0"
           option-filter-prop="label"
           placeholder="全部"
           popup-class-name="hr-filter-select-dropdown"
           show-search
         />
-      </Form.Item>
-      <Form.Item label="类型">
+      </div>
+      <div class="hr-filter-field">
+        <span class="hr-filter-label">类型</span>
         <Select
           v-model:value="query.docType"
           :options="DOC_TYPE_OPTIONS"
           :popup-match-select-width="false"
           allow-clear
-          class="w-44"
+          class="w-44 shrink-0"
           placeholder="全部"
           popup-class-name="hr-filter-select-dropdown"
         />
-      </Form.Item>
-      <Form.Item label="关键词">
+      </div>
+      <div class="hr-filter-field">
+        <span class="hr-filter-label">关键词</span>
         <Input
           v-model:value="query.keyword"
           allow-clear
-          class="w-48"
+          class="!w-48 shrink-0"
           placeholder="标题/文件名"
         />
-      </Form.Item>
-      <Form.Item>
-        <Space>
-          <Button type="primary" @click="onSearch">查询</Button>
-          <Button @click="onReset">重置</Button>
-          <Button v-if="canUpload" type="primary" @click="openUpload">
-            上传文档
-          </Button>
-          <Button
-            v-if="canPage('/hr/contract-expire')"
-            @click="router.push('/hr/contract-expire')"
-          >
-            合同到期工作台
-          </Button>
-        </Space>
-      </Form.Item>
-    </Form>
+      </div>
+      <div class="hr-filter-actions">
+        <Button type="primary" @click="onSearch">查询</Button>
+        <Button @click="onReset">重置</Button>
+        <Button v-if="canUpload" type="primary" @click="openUpload">
+          上传文档
+        </Button>
+        <Button
+          v-if="canPage('/hr/contract-expire')"
+          @click="router.push('/hr/contract-expire')"
+        >
+          合同到期工作台
+        </Button>
+      </div>
+    </div>
 
     <Table
       :columns="columns"

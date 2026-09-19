@@ -75,6 +75,8 @@ const formState = reactive({
   positionId: undefined as number | undefined,
   remark: '',
   salaryMonth: undefined as dayjs.Dayjs | undefined,
+  seniorityPay: 0,
+  seniorityYears: undefined as number | undefined,
   taskBonus: 0,
 });
 
@@ -83,6 +85,7 @@ const employeeOptions = ref<{ label: string; value: number }[]>([]);
 const actualPreview = computed(() => {
   return (
     (formState.baseSalary || 0) +
+    (formState.seniorityPay || 0) +
     (formState.bonus || 0) -
     (formState.deduction || 0)
   ).toFixed(2);
@@ -93,7 +96,13 @@ const columns = [
   { dataIndex: 'empNo', key: 'empNo', title: '工号', width: 100 },
   { dataIndex: 'employeeName', key: 'employeeName', title: '姓名', width: 100 },
   { dataIndex: 'positionName', key: 'positionName', title: '岗位', width: 110 },
-  { dataIndex: 'baseSalary', key: 'baseSalary', title: '底薪', width: 100 },
+  { dataIndex: 'baseSalary', key: 'baseSalary', title: '基本工资', width: 100 },
+  {
+    dataIndex: 'seniorityPay',
+    key: 'seniorityPay',
+    title: '工龄津贴',
+    width: 100,
+  },
   { dataIndex: 'taskBonus', key: 'taskBonus', title: '任务奖金', width: 100 },
   { dataIndex: 'bonus', key: 'bonus', title: '最终奖金', width: 100 },
   { dataIndex: 'deduction', key: 'deduction', title: '扣款', width: 90 },
@@ -179,6 +188,8 @@ async function applyPreview() {
       salaryMonth: formState.salaryMonth.format('YYYY-MM'),
     });
     formState.baseSalary = Number(preview.baseSalary ?? 0);
+    formState.seniorityPay = Number(preview.seniorityPay ?? 0);
+    formState.seniorityYears = preview.seniorityYears;
     formState.taskBonus = Number(preview.taskBonus ?? 0);
     formState.bonus = Number(preview.bonus ?? preview.taskBonus ?? 0);
     formState.deduction = Number(preview.deduction ?? 0);
@@ -226,6 +237,8 @@ async function handleSubmit() {
       positionId: formState.positionId,
       remark: formState.remark || undefined,
       salaryMonth: formState.salaryMonth.format('YYYY-MM'),
+      seniorityPay: formState.seniorityPay,
+      seniorityYears: formState.seniorityYears,
       taskBonus: formState.taskBonus,
     });
     message.success('创建成功');

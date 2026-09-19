@@ -8,3 +8,130 @@
   text-overflow: clip;
   white-space: nowrap;
 }
+
+/* 单行工具栏：均匀小间距，控件禁止被拉满整行 */
+.hr-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.hr-toolbar > .ant-btn,
+.hr-toolbar > .ant-select,
+.hr-toolbar > .ant-input-affix-wrapper,
+.hr-toolbar > .ant-input,
+.hr-toolbar > .ant-input-number,
+.hr-toolbar > .ant-picker,
+.hr-toolbar > .ant-picker-range {
+  flex: 0 0 auto !important;
+}
+
+.hr-toolbar .ant-input-affix-wrapper,
+.hr-toolbar .ant-input,
+.hr-toolbar .ant-input-number {
+  width: 160px !important;
+  max-width: 160px !important;
+}
+
+.hr-toolbar .ant-input-number.hr-w-md,
+.hr-toolbar .ant-input-affix-wrapper.hr-w-md,
+.hr-toolbar .ant-input.hr-w-md,
+.hr-toolbar .hr-w-md {
+  width: 180px !important;
+  max-width: 180px !important;
+}
+
+.hr-toolbar .ant-input-number.hr-w-sm,
+.hr-toolbar .ant-input-affix-wrapper.hr-w-sm,
+.hr-toolbar .ant-input.hr-w-sm,
+.hr-toolbar .hr-w-sm {
+  width: 120px !important;
+  max-width: 120px !important;
+}
+
+.hr-toolbar .ant-input-number.hr-w-xs,
+.hr-toolbar .hr-w-xs {
+  width: 88px !important;
+  max-width: 88px !important;
+}
+
+.hr-toolbar .ant-input-affix-wrapper.hr-w-period,
+.hr-toolbar .ant-input.hr-w-period,
+.hr-toolbar .hr-w-period {
+  width: 168px !important;
+  max-width: 168px !important;
+}
+
+/* 带上方小标签的筛选条 */
+.hr-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: flex-end;
+  margin-bottom: 12px;
+}
+
+.hr-filter-field {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.hr-filter-label {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  color: #64748b;
+}
+
+.hr-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding-bottom: 0;
+}
+
+.hr-filter-bar .ant-select,
+.hr-filter-bar .ant-input-affix-wrapper,
+.hr-filter-bar .ant-input,
+.hr-filter-bar .ant-input-number,
+.hr-filter-bar .ant-picker {
+  flex: 0 0 auto !important;
+}
+
+.hr-filter-bar.ant-form-inline .ant-form-item {
+  margin-inline-end: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.hr-filter-bar.ant-form-inline .ant-form-item-row {
+  flex-wrap: nowrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.hr-filter-bar.ant-form-inline .ant-form-item-label {
+  height: auto !important;
+  padding: 0 !important;
+  line-height: 32px !important;
+}
+
+.hr-filter-bar.ant-form-inline .ant-form-item-label > label {
+  height: 32px;
+  line-height: 32px;
+}
+
+.hr-filter-bar.ant-form-inline .ant-form-item-control-input {
+  min-height: 32px;
+}
+
+.hr-filter-bar .ant-select-selector,
+.hr-filter-bar .ant-input,
+.hr-filter-bar .ant-picker {
+  align-items: center !important;
+}

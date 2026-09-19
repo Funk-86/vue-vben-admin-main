@@ -5,7 +5,7 @@ import type { BasicOption, Recordable } from '@vben/types';
 import type { SavedAccount } from '#/utils/saved-accounts';
 
 import { computed, nextTick, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import { AuthenticationLogin, z } from '@vben/common-ui';
 import { $t } from '@vben/locales';
@@ -23,6 +23,7 @@ import { HR_ROLE, ROLE_NAME_MAP } from '#/views/hr/roles';
 defineOptions({ name: 'Login' });
 
 const authStore = useAuthStore();
+const route = useRoute();
 const router = useRouter();
 const loginRef = ref<{
   getFormApi: () => { setValues: (v: Recordable<any>) => void };
@@ -34,8 +35,13 @@ const rememberMe = ref(false);
 const ROLE_OPTIONS: BasicOption[] = [
   HR_ROLE.SUPER_ADMIN,
   HR_ROLE.HR_ADMIN,
+  HR_ROLE.HR_SSC,
+  HR_ROLE.HR_COMP,
+  HR_ROLE.HR_ER,
   HR_ROLE.DEPT_MANAGER,
   HR_ROLE.EMPLOYEE,
+  HR_ROLE.INTERVIEWER,
+  HR_ROLE.CANDIDATE,
 ].map((code) => ({
   label: ROLE_NAME_MAP[code] ?? code,
   value: code,
@@ -149,6 +155,16 @@ async function handleSubmit(values: Recordable<any>) {
 onMounted(async () => {
   refreshSavedAccounts();
   await nextTick();
+  const qRole = typeof route.query.role === 'string' ? route.query.role : '';
+  const qUser =
+    typeof route.query.username === 'string' ? route.query.username : '';
+  if (qRole || qUser) {
+    loginRef.value?.getFormApi()?.setValues({
+      ...(qRole ? { roleCode: qRole } : {}),
+      ...(qUser ? { username: qUser } : {}),
+    });
+    return;
+  }
   const first = savedAccounts.value[0];
   if (first) {
     selectedAccountKey.value = `${first.username}::${first.roleCode}`;
@@ -194,6 +210,15 @@ onMounted(async () => {
 
     <Button block class="mt-4" @click="router.push('/auth/email-login')">
       邮箱登录
+    </Button>
+
+    <Button
+      block
+      class="mt-2"
+      type="link"
+      @click="router.push('/auth/candidate-register')"
+    >
+      求职者注册
     </Button>
 
     <label class="mt-2 flex cursor-pointer items-center gap-2 text-sm">
