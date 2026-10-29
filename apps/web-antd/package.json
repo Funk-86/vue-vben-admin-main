@@ -46,7 +46,7 @@
     "@vueuse/core": "catalog:",
     "ant-design-vue": "catalog:",
     "dayjs": "catalog:",
-    "livekit-client": "^2.9.1",
+    "livekit-client": "^2.23.0",
     "pinia": "catalog:",
     "vue": "catalog:",
     "vue-router": "catalog:"
